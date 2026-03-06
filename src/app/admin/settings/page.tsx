@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/Toast';
-import { Settings, HardDrive, CheckCircle2, XCircle, Loader2, LogOut, ExternalLink, Lock, QrCode, DollarSign } from 'lucide-react';
+import { Settings, HardDrive, CheckCircle2, XCircle, Loader2, LogOut, ExternalLink, Lock, QrCode, DollarSign, MessageCircle, RefreshCw } from 'lucide-react';
 
 interface TenantInfo {
     id: string;
@@ -35,6 +35,13 @@ export default function SettingsPage() {
     const [pixForm, setPixForm] = useState({ pixKey: '', pixKeyType: 'CPF', pixReceiverName: '' });
     const [pixSaving, setPixSaving] = useState(false);
     const [pixConfigured, setPixConfigured] = useState(false);
+
+    // WhatsApp / Evolution API
+    const [wpForm, setWpForm] = useState({ evolutionApiUrl: '', evolutionApiKey: '', evolutionInstance: '' });
+    const [wpStatus, setWpStatus] = useState<{ configured: boolean; connected: boolean; phone?: string; qrCode?: string; error?: string } | null>(null);
+    const [wpLoading, setWpLoading] = useState(true);
+    const [wpSaving, setWpSaving] = useState(false);
+    const [wpQrLoading, setWpQrLoading] = useState(false);
 
     // Check URL params for drive connection result
     const [driveMessage, setDriveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -89,6 +96,20 @@ export default function SettingsPage() {
                 }
             })
             .catch(() => { /* PIX not configured yet, ignore */ });
+
+        // Load WhatsApp status
+        fetch('/api/admin/settings/whatsapp')
+            .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+            .then(d => {
+                if (d.data) {
+                    setWpStatus(d.data);
+                    if (d.data.configured) {
+                        setWpForm({ evolutionApiUrl: d.data.apiUrl || '', evolutionApiKey: '', evolutionInstance: d.data.instance || '' });
+                    }
+                }
+            })
+            .catch(() => { })
+            .finally(() => setWpLoading(false));
     }, []);
 
     const handleConnect = () => {
@@ -401,6 +422,166 @@ export default function SettingsPage() {
                                 {pixSaving ? <><Loader2 size={14} className="animate-spin" style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Salvando...</> : <><DollarSign size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Salvar PIX</>}
                             </button>
                         </form>
+                    </div>
+                </div>
+
+                {/* WhatsApp / Evolution API */}
+                <div className="card" style={{ marginTop: 'var(--space-4)' }}>
+                    <div className="card-header">
+                        <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                            <MessageCircle size={18} style={{ color: '#25D366' }} /> WhatsApp (Evolution API)
+                        </h2>
+                    </div>
+                    <div style={{ padding: 'var(--space-4)' }}>
+                        {wpLoading ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', color: 'var(--color-text-muted)' }}>
+                                <Loader2 size={16} className="animate-spin" /> Verificando conexão...
+                            </div>
+                        ) : wpStatus?.connected ? (
+                            /* Connected State */
+                            <div>
+                                <div style={{
+                                    display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
+                                    padding: 'var(--space-4)', background: 'rgba(37,211,102,0.08)',
+                                    borderRadius: 'var(--radius-lg)', marginBottom: 'var(--space-4)',
+                                    border: '1px solid rgba(37,211,102,0.2)',
+                                }}>
+                                    <CheckCircle2 size={24} style={{ color: '#25D366', flexShrink: 0 }} />
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontWeight: 600, color: '#25D366' }}>WhatsApp Conectado</div>
+                                        <div className="text-sm" style={{ color: '#1a9e4a', marginTop: 2 }}>
+                                            {wpStatus.phone || 'Sessão ativa'}
+                                        </div>
+                                    </div>
+                                    <span className="badge badge-success">Ativo</span>
+                                </div>
+                                <p className="text-sm text-muted" style={{ marginBottom: 'var(--space-3)' }}>
+                                    Mensagens automáticas de cobrança serão enviadas via este WhatsApp para clientes com faturas pendentes ou atrasadas.
+                                </p>
+                                <button
+                                    className="btn btn-danger"
+                                    onClick={async () => {
+                                        const ok = confirm('Desconectar WhatsApp? As mensagens automáticas serão interrompidas.');
+                                        if (!ok) return;
+                                        await fetch('/api/admin/settings/whatsapp', { method: 'DELETE' });
+                                        setWpStatus({ configured: false, connected: false });
+                                        setWpForm({ evolutionApiUrl: '', evolutionApiKey: '', evolutionInstance: '' });
+                                        showToast('WhatsApp desconectado', 'success');
+                                    }}
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}
+                                >
+                                    <LogOut size={14} /> Desconectar WhatsApp
+                                </button>
+                            </div>
+                        ) : wpStatus?.configured && wpStatus?.qrCode ? (
+                            /* QR Code pairing state */
+                            <div>
+                                <div style={{
+                                    display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
+                                    padding: 'var(--space-4)', background: 'rgba(245,158,11,0.08)',
+                                    borderRadius: 'var(--radius-lg)', marginBottom: 'var(--space-4)',
+                                    border: '1px solid rgba(245,158,11,0.2)',
+                                }}>
+                                    <MessageCircle size={24} style={{ color: '#f59e0b', flexShrink: 0 }} />
+                                    <div>
+                                        <div style={{ fontWeight: 600, color: '#f59e0b' }}>Aguardando conexão</div>
+                                        <div className="text-sm text-muted" style={{ marginTop: 2 }}>Escaneie o QR Code com seu WhatsApp</div>
+                                    </div>
+                                </div>
+                                <div style={{ textAlign: 'center', marginBottom: 'var(--space-4)' }}>
+                                    <img
+                                        src={wpStatus.qrCode.startsWith('data:') ? wpStatus.qrCode : `data:image/png;base64,${wpStatus.qrCode}`}
+                                        alt="QR Code WhatsApp"
+                                        style={{ maxWidth: 280, margin: '0 auto', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}
+                                    />
+                                    <p className="text-sm text-muted" style={{ marginTop: 8 }}>Abra o WhatsApp → Dispositivos conectados → Conectar dispositivo</p>
+                                </div>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary"
+                                        disabled={wpQrLoading}
+                                        onClick={async () => {
+                                            setWpQrLoading(true);
+                                            try {
+                                                const res = await fetch('/api/admin/settings/whatsapp/qr');
+                                                const d = await res.json();
+                                                if (d.data?.connected) {
+                                                    setWpStatus({ ...wpStatus!, connected: true, phone: d.data.phone });
+                                                    showToast('WhatsApp conectado com sucesso!', 'success');
+                                                } else if (d.data?.qrCode) {
+                                                    setWpStatus({ ...wpStatus!, qrCode: d.data.qrCode });
+                                                }
+                                            } finally { setWpQrLoading(false); }
+                                        }}
+                                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                                    >
+                                        {wpQrLoading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                                        Atualizar QR Code
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            /* Not configured — show form */
+                            <div>
+                                <div style={{
+                                    display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
+                                    padding: 'var(--space-4)', background: 'var(--color-border-light)',
+                                    borderRadius: 'var(--radius-lg)', marginBottom: 'var(--space-4)',
+                                }}>
+                                    <XCircle size={24} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+                                    <div>
+                                        <div style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>WhatsApp não conectado</div>
+                                        <div className="text-sm text-muted" style={{ marginTop: 2 }}>Configure a Evolution API para enviar cobranças automáticas via WhatsApp.</div>
+                                    </div>
+                                </div>
+                                {wpStatus?.error && (
+                                    <div style={{ padding: 'var(--space-3)', borderRadius: 'var(--radius-md)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontSize: '0.82rem', marginBottom: 'var(--space-4)' }}>
+                                        Erro: {wpStatus.error}
+                                    </div>
+                                )}
+                                <form onSubmit={async (e) => {
+                                    e.preventDefault();
+                                    setWpSaving(true);
+                                    try {
+                                        const res = await fetch('/api/admin/settings/whatsapp', {
+                                            method: 'PUT',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify(wpForm),
+                                        });
+                                        const d = await res.json();
+                                        if (res.ok && d.data) {
+                                            setWpStatus(d.data);
+                                            if (d.data.connected) {
+                                                showToast('WhatsApp conectado com sucesso!', 'success');
+                                            } else if (d.data.qrCode) {
+                                                showToast('Escaneie o QR Code com seu WhatsApp', 'info');
+                                            } else {
+                                                showToast('Configuração salva! Aguardando QR Code...', 'success');
+                                            }
+                                        } else {
+                                            showToast(d.error || 'Erro ao configurar WhatsApp', 'error');
+                                        }
+                                    } finally { setWpSaving(false); }
+                                }}>
+                                    <div className="form-group">
+                                        <label className="form-label">URL da Evolution API</label>
+                                        <input className="form-input" value={wpForm.evolutionApiUrl} onChange={e => setWpForm({ ...wpForm, evolutionApiUrl: e.target.value })} required placeholder="https://evo.seudominio.com" />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">API Key</label>
+                                        <input className="form-input" type="password" value={wpForm.evolutionApiKey} onChange={e => setWpForm({ ...wpForm, evolutionApiKey: e.target.value })} required placeholder="Sua chave de API" />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Nome da Instância</label>
+                                        <input className="form-input" value={wpForm.evolutionInstance} onChange={e => setWpForm({ ...wpForm, evolutionInstance: e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, '') })} required placeholder="minha-instancia" />
+                                    </div>
+                                    <button type="submit" className="btn btn-primary" disabled={wpSaving} style={{ marginTop: 8, background: '#25D366', borderColor: '#25D366' }}>
+                                        {wpSaving ? <><Loader2 size={14} className="animate-spin" style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Conectando...</> : <><MessageCircle size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Conectar WhatsApp</>}
+                                    </button>
+                                </form>
+                            </div>
+                        )}
                     </div>
                 </div>
                 {/* Password Change */}

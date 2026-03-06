@@ -100,6 +100,9 @@ enum NotificationType {
   PASSWORD_RESET
   FILE_PUBLISHED
   DOWNLOAD_BLOCKED
+  WHATSAPP_REMINDER
+  WHATSAPP_DUE_TODAY
+  WHATSAPP_OVERDUE
 }
 
 enum JobStatus {
@@ -133,6 +136,10 @@ model Tenant {
   pixKey              String?
   pixKeyType          String?       // CPF, CNPJ, EMAIL, PHONE, RANDOM
   pixReceiverName     String?
+  // Evolution API (WhatsApp)
+  evolutionApiUrl       String?       // Base URL: https://evo.example.com
+  evolutionApiKey       String?       // API key
+  evolutionInstance     String?       // Instance name
   // Branding
   logoUrl             String?
   primaryColor        String?       @default("#6366f1")

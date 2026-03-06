@@ -6,6 +6,7 @@ import { syncPixPayments } from '@/lib/jobs/sync-pix-payments';
 import { sendReminders } from '@/lib/jobs/send-reminders';
 import { applyOverdueBlocks } from '@/lib/jobs/apply-overdue-blocks';
 import { generateVideoBilling } from '@/lib/jobs/generate-video-billing';
+import { sendWhatsappReminders } from '@/lib/jobs/send-whatsapp-reminders';
 
 /**
  * POST /api/cron/run
@@ -13,7 +14,7 @@ import { generateVideoBilling } from '@/lib/jobs/generate-video-billing';
  * Secured by CRON_SECRET.
  *
  * Query params:
- *   job=all (default) | monthly-invoices | video-billing | sync-payments | apply-overdue | send-reminders | apply-blocks
+ *   job=all (default) | monthly-invoices | video-billing | sync-payments | apply-overdue | send-reminders | apply-blocks | send-whatsapp-reminders
  */
 export const POST = withCronAuth(async (req: NextRequest) => {
     const job = req.nextUrl.searchParams.get('job') || 'all';
@@ -58,6 +59,13 @@ export const POST = withCronAuth(async (req: NextRequest) => {
         results.sendReminders = await runJobForAllTenants(
             'send-reminders',
             sendReminders
+        );
+    }
+
+    if (job === 'all' || job === 'send-whatsapp-reminders') {
+        results.sendWhatsappReminders = await runJobForAllTenants(
+            'send-whatsapp-reminders',
+            sendWhatsappReminders
         );
     }
 
