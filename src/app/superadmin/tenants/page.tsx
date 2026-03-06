@@ -85,10 +85,12 @@ export default function SuperAdminTenantsPage() {
         e.preventDefault();
         setCreating(true);
         try {
+            const payload = { ...form };
+            if (!payload.adminPassword || emailExists) delete (payload as any).adminPassword;
             const res = await fetch('/api/superadmin/tenants', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(form),
+                body: JSON.stringify(payload),
             });
             if (res.ok) {
                 showToast('Tenant criado com sucesso!', 'success');
