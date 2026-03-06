@@ -52,7 +52,7 @@ export default function SuperAdminTenantsPage() {
                 const res = await fetch(`/api/superadmin/tenants/check-email?email=${encodeURIComponent(email)}`);
                 if (res.ok) {
                     const data = await res.json();
-                    setEmailExists(data.exists);
+                    setEmailExists(!!data.data?.exists);
                 } else {
                     setEmailExists(false);
                 }
