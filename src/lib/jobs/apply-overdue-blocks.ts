@@ -20,12 +20,16 @@ export async function applyOverdueBlocks(tenantId: string): Promise<string> {
 
     if (!tenant) return 'Tenant not found';
 
-    // Step 1: Mark pending invoices as overdue
+    // Use start of today so invoices due today stay PENDING
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    // Step 1: Mark pending invoices as overdue (due date strictly before today)
     const overdueResult = await prisma.invoice.updateMany({
         where: {
             tenantId,
             status: 'PENDING' as const,
-            dueDate: { lt: now },
+            dueDate: { lt: startOfToday },
         },
         data: { status: 'OVERDUE' as const },
     });

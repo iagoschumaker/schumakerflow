@@ -628,6 +628,12 @@ export default function FinancePage() {
                                         msg += ` (venc: ${new Date(inv.dueDate).toLocaleDateString('pt-BR')})`;
                                         if (inv.referenceMonth) msg += ` ref: ${formatMonth(inv.referenceMonth)}`;
                                         msg += `\n`;
+                                        // Show invoice items if available
+                                        if (inv.items && inv.items.length > 0 && !inv.contract?.name) {
+                                            inv.items.forEach((item: any) => {
+                                                msg += `   • ${item.description} — ${formatCurrency(item.totalAmount)}\n`;
+                                            });
+                                        }
                                     });
                                     msg += `\n*Total: ${formatCurrency(total)}*\n`;
                                     if (pixSettings) {

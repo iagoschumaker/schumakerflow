@@ -544,10 +544,12 @@ export const POST = withAuth(
             if (parsed.data.status !== undefined) updateData.status = parsed.data.status;
             if (parsed.data.referenceMonth !== undefined) updateData.referenceMonth = parsed.data.referenceMonth;
 
-            // Auto-detect overdue: if dueDate is in the past and status is PENDING, mark as OVERDUE
+            // Auto-detect overdue: if dueDate is strictly before today, mark as OVERDUE
             const effectiveDueDate = updateData.dueDate ? (updateData.dueDate as Date) : invoice.dueDate;
             const effectiveStatus = (updateData.status as string) || invoice.status;
-            if (effectiveStatus === 'PENDING' && new Date(effectiveDueDate) < new Date()) {
+            const startOfToday = new Date();
+            startOfToday.setHours(0, 0, 0, 0);
+            if (effectiveStatus === 'PENDING' && new Date(effectiveDueDate) < startOfToday) {
                 updateData.status = 'OVERDUE';
             }
 
