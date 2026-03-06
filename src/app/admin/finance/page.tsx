@@ -643,7 +643,7 @@ export default function FinancePage() {
                                         msg += `Chave: *${pixSettings.pixKey}*\n`;
                                         msg += `Nome: ${pixSettings.pixReceiverName}\n`;
                                     }
-                                    msg += `\nObrigado!`;
+                                    msg += `\nObrigado!\n\n_Enviado pelo sistema Schumaker Flow_`;
 
                                     if (pixSettings) {
                                         setQrLoading(true);
