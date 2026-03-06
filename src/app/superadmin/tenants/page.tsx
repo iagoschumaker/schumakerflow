@@ -32,15 +32,47 @@ export default function SuperAdminTenantsPage() {
     const [form, setForm] = useState(emptyForm);
     const [editForm, setEditForm] = useState(emptyEditForm);
     const [showPw, setShowPw] = useState(false);
+    const [emailExists, setEmailExists] = useState(false);
+    const [checkingEmail, setCheckingEmail] = useState(false);
     const [showEditPw, setShowEditPw] = useState(false);
     const { showToast, showConfirm } = useToast();
 
     useEffect(() => { loadTenants(); }, []);
 
+    // Check if admin email already exists (debounced)
+    useEffect(() => {
+        const email = form.adminEmail.trim();
+        if (!email || !email.includes('@') || !email.includes('.')) {
+            setEmailExists(false);
+            return;
+        }
+        setCheckingEmail(true);
+        const timer = setTimeout(async () => {
+            try {
+                const res = await fetch(`/api/superadmin/tenants/check-email?email=${encodeURIComponent(email)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setEmailExists(data.exists);
+                } else {
+                    setEmailExists(false);
+                }
+            } catch {
+                setEmailExists(false);
+            } finally {
+                setCheckingEmail(false);
+            }
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [form.adminEmail]);
+
     const loadTenants = () => {
         fetch('/api/superadmin/tenants')
-            .then((r) => r.json())
+            .then((r) => {
+                if (!r.ok) throw new Error('Failed to load tenants');
+                return r.json();
+            })
             .then((d) => setTenants(d.data || []))
+            .catch((err) => console.error('Error loading tenants:', err))
             .finally(() => setLoading(false));
     };
 
@@ -313,7 +345,7 @@ export default function SuperAdminTenantsPage() {
             </div>
 
             <FloatingActionButton actions={[
-                { label: 'Novo Flow', icon: <Building2 size={18} />, onClick: () => { setForm(emptyForm); setShowPw(false); setShowModal(true); } },
+                { label: 'Novo Flow', icon: <Building2 size={18} />, onClick: () => { setForm(emptyForm); setShowPw(false); setEmailExists(false); setShowModal(true); } },
             ]} />
 
             {/* Create Modal */}
@@ -351,16 +383,25 @@ export default function SuperAdminTenantsPage() {
                                 <div className="form-group">
                                     <label className="form-label">Email do Admin</label>
                                     <input className="form-input" type="email" value={form.adminEmail} onChange={(e) => setForm({ ...form, adminEmail: e.target.value })} required placeholder="admin@empresa.com" />
+                                    {checkingEmail && (
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4, display: 'block' }}>Verificando email...</span>
+                                    )}
+                                    {emailExists && !checkingEmail && (
+                                        <span style={{ fontSize: '0.75rem', color: '#22c55e', marginTop: 4, display: 'block', fontWeight: 600 }}>✓ Usuário já existe — será vinculado automaticamente ao novo Flow</span>
+                                    )}
                                 </div>
-                                <div className="form-group">
-                                    <label className="form-label">Senha do Admin</label>
-                                    <div style={{ position: 'relative' }}>
-                                        <input className="form-input" type={showPw ? 'text' : 'password'} value={form.adminPassword} onChange={(e) => setForm({ ...form, adminPassword: e.target.value })} required minLength={8} placeholder="Mínimo 8 caracteres" style={{ paddingRight: 40 }} />
-                                        <button type="button" onClick={() => setShowPw(!showPw)} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', color: 'var(--color-text-muted)' }}>
-                                            {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
-                                        </button>
+                                {!emailExists && (
+                                    <div className="form-group">
+                                        <label className="form-label">Senha do Admin</label>
+                                        <div style={{ position: 'relative' }}>
+                                            <input className="form-input" type={showPw ? 'text' : 'password'} value={form.adminPassword} onChange={(e) => setForm({ ...form, adminPassword: e.target.value })} required minLength={8} placeholder="Mínimo 8 caracteres" style={{ paddingRight: 40 }} />
+                                            <button type="button" onClick={() => setShowPw(!showPw)} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', color: 'var(--color-text-muted)' }}>
+                                                {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
+                                )}
+
                             </div>
                             <div className="modal-footer">
                                 <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancelar</button>
