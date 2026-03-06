@@ -36,15 +36,22 @@ export const POST = withSuperAdmin(async (req) => {
         if (!parsed.success) return apiError('Dados inválidos: ' + parsed.error.issues.map(i => i.message).join(', '), 400);
 
         const { name, slug, subdomain, adminName, adminEmail, adminPassword } = parsed.data;
+        const subdomainValue = subdomain?.trim() || null;  // Convert empty to null for @unique field
 
         // Check slug uniqueness
         const existing = await prisma.tenant.findUnique({ where: { slug } });
         if (existing) return apiError('Slug já está em uso', 409);
 
+        // Check subdomain uniqueness
+        if (subdomainValue) {
+            const existingSub = await prisma.tenant.findUnique({ where: { subdomain: subdomainValue } });
+            if (existingSub) return apiError('Subdomínio já está em uso', 409);
+        }
+
         // Create tenant + admin user in transaction
         const result = await prisma.$transaction(async (tx) => {
             const tenant = await tx.tenant.create({
-                data: { name, slug, subdomain },
+                data: { name, slug, subdomain: subdomainValue },
             });
 
             // Check if user already exists — if so, just link them
