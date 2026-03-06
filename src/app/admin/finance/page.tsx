@@ -19,6 +19,7 @@ interface Invoice {
     notes: string | null;
     client: { name: string; phone: string | null };
     contract?: { name: string } | null;
+    items?: { description: string; quantity: number; unitPrice: number; totalAmount: number; type: string }[];
     _count: { payments: number };
 }
 
