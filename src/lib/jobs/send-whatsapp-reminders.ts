@@ -63,19 +63,19 @@ export async function sendWhatsappReminders(tenantId: string): Promise<string> {
             // Overdue — urgent message
             const daysLate = Math.abs(daysUntilDue);
             notificationType = 'WHATSAPP_OVERDUE';
-            message = `⚠️ *Fatura em atraso — ${tenant.name}*\n\n`;
+            message = `⚠️ *Fatura em atraso — ${tenant!.name}*\n\n`;
             message += `Olá ${invoice.client.name}, sua fatura no valor de *${amount}* venceu em *${dueDateStr}* (${daysLate} dia${daysLate > 1 ? 's' : ''} de atraso).\n\n`;
             message += `Por favor, regularize o pagamento o mais rápido possível para evitar restrições de acesso.\n`;
         } else if (daysUntilDue === 0) {
             // Due today
             notificationType = 'WHATSAPP_DUE_TODAY';
-            message = `📅 *Fatura vence hoje — ${tenant.name}*\n\n`;
+            message = `📅 *Fatura vence hoje — ${tenant!.name}*\n\n`;
             message += `Olá ${invoice.client.name}, sua fatura no valor de *${amount}* vence *hoje* (${dueDateStr}).\n\n`;
             message += `Realize o pagamento para manter seu acesso.\n`;
         } else if (daysUntilDue > 0 && daysUntilDue <= 3) {
             // 1-3 days before due
             notificationType = 'WHATSAPP_REMINDER';
-            message = `🔔 *Lembrete de fatura — ${tenant.name}*\n\n`;
+            message = `🔔 *Lembrete de fatura — ${tenant!.name}*\n\n`;
             message += `Olá ${invoice.client.name}, sua fatura no valor de *${amount}* vence em *${daysUntilDue} dia${daysUntilDue > 1 ? 's' : ''}* (${dueDateStr}).\n`;
         }
 
@@ -87,11 +87,11 @@ export async function sendWhatsappReminders(tenantId: string): Promise<string> {
         }
 
         // Add PIX info if configured
-        if (tenant.pixKey) {
+        if (tenant!.pixKey) {
             message += `\n*Dados para pagamento PIX:*\n`;
-            message += `Tipo: ${tenant.pixKeyType}\n`;
-            message += `Chave: *${tenant.pixKey}*\n`;
-            if (tenant.pixReceiverName) message += `Nome: ${tenant.pixReceiverName}\n`;
+            message += `Tipo: ${tenant!.pixKeyType}\n`;
+            message += `Chave: *${tenant!.pixKey}*\n`;
+            if (tenant!.pixReceiverName) message += `Nome: ${tenant!.pixReceiverName}\n`;
         }
 
         message += `\nObrigado! 🙏`;
