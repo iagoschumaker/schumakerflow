@@ -1,12 +1,24 @@
 /**
  * Evolution API v2 — WhatsApp messaging service.
- * Each tenant stores their own Evolution API credentials.
+ * URL and API Key come from environment variables (global/server config).
+ * Each tenant only stores the instance name (auto-generated from slug).
  */
 
 export interface EvolutionConfig {
     apiUrl: string;   // Base URL, e.g. https://evo.example.com
     apiKey: string;   // API key
     instance: string; // Instance name
+}
+
+/**
+ * Build an EvolutionConfig from env vars + tenant instance name.
+ * Returns null if the global env vars are not set or instance is missing.
+ */
+export function getEvolutionConfig(instanceName: string | null | undefined): EvolutionConfig | null {
+    const apiUrl = process.env.EVOLUTION_API_URL;
+    const apiKey = process.env.EVOLUTION_API_KEY;
+    if (!apiUrl || !apiKey || !instanceName) return null;
+    return { apiUrl, apiKey, instance: instanceName };
 }
 
 /**

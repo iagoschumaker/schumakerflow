@@ -1,5 +1,5 @@
 import prisma from '@/lib/db';
-import { sendText, EvolutionConfig } from '@/lib/evolution-api';
+import { sendText, getEvolutionConfig } from '@/lib/evolution-api';
 
 /**
  * Send WhatsApp reminders for invoices that are due today or overdue.
@@ -16,8 +16,6 @@ export async function sendWhatsappReminders(tenantId: string): Promise<string> {
     const tenant = await prisma.tenant.findUnique({
         where: { id: tenantId },
         select: {
-            evolutionApiUrl: true,
-            evolutionApiKey: true,
             evolutionInstance: true,
             name: true,
             pixKey: true,
@@ -26,15 +24,10 @@ export async function sendWhatsappReminders(tenantId: string): Promise<string> {
         },
     });
 
-    if (!tenant?.evolutionApiUrl || !tenant?.evolutionApiKey || !tenant?.evolutionInstance) {
+    const config = getEvolutionConfig(tenant?.evolutionInstance);
+    if (!config) {
         return `Skipped tenant ${tenantId} — WhatsApp not configured`;
     }
-
-    const config: EvolutionConfig = {
-        apiUrl: tenant.evolutionApiUrl,
-        apiKey: tenant.evolutionApiKey,
-        instance: tenant.evolutionInstance,
-    };
 
     const now = new Date();
     const today = now.toISOString().slice(0, 10);
