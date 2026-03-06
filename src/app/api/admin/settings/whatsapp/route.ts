@@ -63,23 +63,10 @@ export const PUT = withAuth(
             data: { evolutionInstance: instanceName },
         });
 
-        // Get QR code for pairing (may take a few seconds to generate)
-        let qr: { qrCode?: string; pairingCode?: string; error?: string } = {};
-        for (let attempt = 0; attempt < 5; attempt++) {
-            await new Promise(resolve => setTimeout(resolve, 2000)); // wait 2s
-            qr = await getQrCode(config);
-            if (qr.qrCode) break;
-        }
-
-        // Check connection status
-        const status = await checkConnection(config);
-
         return apiSuccess({
             configured: true,
-            connected: status.connected,
-            phone: status.phone || null,
-            qrCode: qr.qrCode || null,
-            pairingCode: qr.pairingCode || null,
+            connected: false,
+            instanceCreated: true,
         });
     },
     { roles: ['SUPERADMIN', 'TENANT_ADMIN'] }

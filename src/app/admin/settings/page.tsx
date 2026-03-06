@@ -38,10 +38,12 @@ export default function SettingsPage() {
 
     // WhatsApp / Evolution API
     const [wpConnecting, setWpConnecting] = useState(false);
-    const [wpStatus, setWpStatus] = useState<{ configured: boolean; connected: boolean; phone?: string; qrCode?: string; error?: string } | null>(null);
+    const [wpStatus, setWpStatus] = useState<{ configured: boolean; connected: boolean; phone?: string; error?: string } | null>(null);
     const [wpLoading, setWpLoading] = useState(true);
-    const [wpSaving, setWpSaving] = useState(false);
+    const [wpModalOpen, setWpModalOpen] = useState(false);
+    const [wpQrCode, setWpQrCode] = useState<string | null>(null);
     const [wpQrLoading, setWpQrLoading] = useState(false);
+    const wpPollRef = { current: null as ReturnType<typeof setInterval> | null };
 
     // Check URL params for drive connection result
     const [driveMessage, setDriveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -449,7 +451,7 @@ export default function SettingsPage() {
                                     <span className="badge badge-success">Ativo</span>
                                 </div>
                                 <p className="text-sm text-muted" style={{ marginBottom: 'var(--space-3)' }}>
-                                    Mensagens automáticas de cobrança serão enviadas via este WhatsApp para clientes com faturas pendentes ou atrasadas.
+                                    Mensagens automáticas de cobrança serão enviadas via este WhatsApp.
                                 </p>
                                 <button
                                     className="btn btn-danger"
@@ -464,54 +466,6 @@ export default function SettingsPage() {
                                 >
                                     <LogOut size={14} /> Desconectar WhatsApp
                                 </button>
-                            </div>
-                        ) : wpStatus?.qrCode ? (
-                            /* QR Code pairing state */
-                            <div>
-                                <div style={{
-                                    display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
-                                    padding: 'var(--space-4)', background: 'rgba(245,158,11,0.08)',
-                                    borderRadius: 'var(--radius-lg)', marginBottom: 'var(--space-4)',
-                                    border: '1px solid rgba(245,158,11,0.2)',
-                                }}>
-                                    <MessageCircle size={24} style={{ color: '#f59e0b', flexShrink: 0 }} />
-                                    <div>
-                                        <div style={{ fontWeight: 600, color: '#f59e0b' }}>Aguardando conexão</div>
-                                        <div className="text-sm text-muted" style={{ marginTop: 2 }}>Escaneie o QR Code abaixo com seu WhatsApp</div>
-                                    </div>
-                                </div>
-                                <div style={{ textAlign: 'center', marginBottom: 'var(--space-4)' }}>
-                                    <img
-                                        src={wpStatus.qrCode.startsWith('data:') ? wpStatus.qrCode : `data:image/png;base64,${wpStatus.qrCode}`}
-                                        alt="QR Code WhatsApp"
-                                        style={{ maxWidth: 280, margin: '0 auto', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}
-                                    />
-                                    <p className="text-sm text-muted" style={{ marginTop: 8 }}>Abra o WhatsApp → Dispositivos conectados → Conectar dispositivo</p>
-                                </div>
-                                <div style={{ display: 'flex', gap: 8 }}>
-                                    <button
-                                        type="button"
-                                        className="btn btn-secondary"
-                                        disabled={wpQrLoading}
-                                        onClick={async () => {
-                                            setWpQrLoading(true);
-                                            try {
-                                                const res = await fetch('/api/admin/settings/whatsapp/qr');
-                                                const d = await res.json();
-                                                if (d.data?.connected) {
-                                                    setWpStatus({ ...wpStatus!, connected: true, phone: d.data.phone });
-                                                    showToast('WhatsApp conectado com sucesso!', 'success');
-                                                } else if (d.data?.qrCode) {
-                                                    setWpStatus({ ...wpStatus!, qrCode: d.data.qrCode });
-                                                }
-                                            } finally { setWpQrLoading(false); }
-                                        }}
-                                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-                                    >
-                                        {wpQrLoading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-                                        Atualizar QR Code
-                                    </button>
-                                </div>
                             </div>
                         ) : (
                             /* Not connected — show connect button */
@@ -545,14 +499,26 @@ export default function SettingsPage() {
                                             });
                                             const d = await res.json();
                                             if (res.ok && d.data) {
-                                                setWpStatus(d.data);
-                                                if (d.data.connected) {
-                                                    showToast('WhatsApp conectado com sucesso!', 'success');
-                                                } else if (d.data.qrCode) {
-                                                    showToast('Escaneie o QR Code com seu WhatsApp', 'info');
-                                                } else {
-                                                    showToast('Aguardando QR Code...', 'success');
-                                                }
+                                                // Instance created — open modal and start polling for QR
+                                                setWpQrCode(null);
+                                                setWpModalOpen(true);
+                                                // Start polling for QR code
+                                                const poll = setInterval(async () => {
+                                                    try {
+                                                        const qrRes = await fetch('/api/admin/settings/whatsapp/qr');
+                                                        const qrData = await qrRes.json();
+                                                        if (qrData.data?.connected) {
+                                                            clearInterval(poll);
+                                                            wpPollRef.current = null;
+                                                            setWpModalOpen(false);
+                                                            setWpStatus({ configured: true, connected: true, phone: qrData.data.phone });
+                                                            showToast('WhatsApp conectado com sucesso!', 'success');
+                                                        } else if (qrData.data?.qrCode) {
+                                                            setWpQrCode(qrData.data.qrCode);
+                                                        }
+                                                    } catch { /* ignore poll errors */ }
+                                                }, 3000);
+                                                wpPollRef.current = poll;
                                             } else {
                                                 showToast(d.error || 'Erro ao conectar WhatsApp', 'error');
                                             }
@@ -566,6 +532,54 @@ export default function SettingsPage() {
                         )}
                     </div>
                 </div>
+
+                {/* WhatsApp QR Code Modal */}
+                {wpModalOpen && (
+                    <div style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', zIndex: 9999,
+                    }} onClick={() => { if (wpPollRef.current) clearInterval(wpPollRef.current); setWpModalOpen(false); }}>
+                        <div style={{
+                            background: 'var(--color-bg)', borderRadius: 'var(--radius-xl)',
+                            padding: 'var(--space-6)', maxWidth: 400, width: '90%', textAlign: 'center',
+                            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+                        }} onClick={e => e.stopPropagation()}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 'var(--space-4)' }}>
+                                <MessageCircle size={24} style={{ color: '#25D366' }} />
+                                <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Conectar WhatsApp</h3>
+                            </div>
+                            {wpQrCode ? (
+                                <div>
+                                    <img
+                                        src={wpQrCode.startsWith('data:') ? wpQrCode : `data:image/png;base64,${wpQrCode}`}
+                                        alt="QR Code WhatsApp"
+                                        style={{ maxWidth: 260, margin: '0 auto', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}
+                                    />
+                                    <p className="text-sm text-muted" style={{ marginTop: 12 }}>
+                                        Abra o WhatsApp → Dispositivos conectados → Conectar dispositivo
+                                    </p>
+                                    <p className="text-sm" style={{ color: '#25D366', marginTop: 4 }}>
+                                        <Loader2 size={12} className="animate-spin" style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+                                        Aguardando leitura do QR Code...
+                                    </p>
+                                </div>
+                            ) : (
+                                <div style={{ padding: 'var(--space-8) 0' }}>
+                                    <Loader2 size={40} className="animate-spin" style={{ color: '#25D366', margin: '0 auto' }} />
+                                    <p className="text-sm text-muted" style={{ marginTop: 16 }}>Gerando QR Code...</p>
+                                </div>
+                            )}
+                            <button
+                                className="btn btn-secondary"
+                                onClick={() => { if (wpPollRef.current) clearInterval(wpPollRef.current); setWpModalOpen(false); }}
+                                style={{ marginTop: 'var(--space-4)' }}
+                            >
+                                Fechar
+                            </button>
+                        </div>
+                    </div>
+                )}
                 {/* Password Change */}
                 <div className="card" style={{ marginTop: 'var(--space-4)' }}>
                     <div className="card-header">
