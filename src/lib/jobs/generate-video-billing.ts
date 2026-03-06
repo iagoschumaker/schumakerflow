@@ -60,13 +60,11 @@ export async function generateVideoBilling(tenantId: string): Promise<string> {
                     lte: endOfPrevMonth,
                 },
                 project: {
-                    company: {
-                        clientId: contract.clientId,
-                    },
+                    clientId: contract.clientId,
                 },
             },
             include: {
-                project: { select: { name: true, company: { select: { name: true } } } },
+                project: { select: { name: true, client: { select: { name: true } } } },
             },
         });
 
@@ -120,19 +118,19 @@ export async function generateVideoBilling(tenantId: string): Promise<string> {
                 contractId: contract.id,
                 dueDate,
                 totalAmount,
-                status: 'PENDING' as const,
+                status: 'PENDING' as any,
                 pixPayload,
                 pixQrCode,
                 externalReference,
                 idempotencyKey,
                 referenceMonth,
                 items: {
-                    create: finalFiles.map((file: { id: string; name: string; project: { name: string; company: { name: string } | null } }) => ({
-                        description: `Arquivo: ${file.name} (${file.project.company?.name} / ${file.project.name})`,
+                    create: finalFiles.map((file: any) => ({
+                        description: `Arquivo: ${file.name} (${file.project.client?.name || ''} / ${file.project.name})`,
                         quantity: 1,
                         unitPrice: perVideoAmount,
                         totalAmount: perVideoAmount,
-                        type: 'VIDEO' as const,
+                        type: 'VIDEO' as any,
                         fileId: file.id,
                     })),
                 },

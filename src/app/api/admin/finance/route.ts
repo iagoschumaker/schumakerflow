@@ -53,7 +53,7 @@ async function autoCreateNextInvoice(tenantId: string, contractId: string, after
             referenceMonth: targetMonth,
             idempotencyKey: `auto_${contract.id}_${targetMonth}`,
             items: {
-                create: [{ description: `${typeLabel} - ${contract.name} (${targetMonth})`, quantity: 1, unitPrice: amount, totalAmount: amount, type: itemType }],
+                create: [{ description: `${typeLabel} - ${contract.name} (${targetMonth})`, quantity: 1, unitPrice: amount, totalAmount: amount, type: itemType as any }],
             },
         },
     });

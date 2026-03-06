@@ -43,7 +43,7 @@ export const PUT = withSuperAdmin(async (req) => {
 
     const tenant = await prisma.tenant.update({
         where: { id: tenantId },
-        data: tenantData,
+        data: tenantData as any,
     });
 
     return apiSuccess(tenant);

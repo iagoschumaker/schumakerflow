@@ -104,7 +104,7 @@ export const POST = withAuth(
                 clientId: parsed.data.clientId,
                 name: parsed.data.name,
                 description: parsed.data.description,
-                status: parsed.data.status || 'DRAFT',
+                status: (parsed.data.status || 'DRAFT') as any,
                 driveFolderId,
                 drivePreviewFolderId,
                 driveFinalFolderId,

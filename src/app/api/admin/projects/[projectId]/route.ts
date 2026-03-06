@@ -30,7 +30,7 @@ export const GET = withAuth(
         // Convert BigInt sizeBytes to Number for JSON serialization
         const serialized = {
             ...project,
-            files: project.files.map((f) => ({
+            files: project.files.map((f: any) => ({
                 ...f,
                 sizeBytes: Number(f.sizeBytes),
             })),
@@ -74,7 +74,7 @@ export const PUT = withAuth(
 
         const project = await prisma.project.update({
             where: { id: projectId },
-            data: parsed.data,
+            data: parsed.data as any,
         });
 
         await prisma.auditLog.create({
