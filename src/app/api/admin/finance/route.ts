@@ -544,13 +544,19 @@ export const POST = withAuth(
             if (parsed.data.status !== undefined) updateData.status = parsed.data.status;
             if (parsed.data.referenceMonth !== undefined) updateData.referenceMonth = parsed.data.referenceMonth;
 
-            // Auto-detect overdue: if dueDate is strictly before today, mark as OVERDUE
+            // Auto-detect overdue status based on dueDate vs today
             const effectiveDueDate = updateData.dueDate ? (updateData.dueDate as Date) : invoice.dueDate;
             const effectiveStatus = (updateData.status as string) || invoice.status;
             const startOfToday = new Date();
             startOfToday.setHours(0, 0, 0, 0);
-            if (effectiveStatus === 'PENDING' && new Date(effectiveDueDate) < startOfToday) {
+            const dueDateObj = new Date(effectiveDueDate);
+            // PENDING → OVERDUE: date is strictly before today
+            if (effectiveStatus === 'PENDING' && dueDateObj < startOfToday) {
                 updateData.status = 'OVERDUE';
+            }
+            // OVERDUE → PENDING: date was changed to today or future
+            if (effectiveStatus === 'OVERDUE' && dueDateObj >= startOfToday) {
+                updateData.status = 'PENDING';
             }
 
             // If reverting from PAID to PENDING/OVERDUE, delete the auto-generated next invoice
