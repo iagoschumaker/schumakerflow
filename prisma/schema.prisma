@@ -1,0 +1,505 @@
+// Schumaker Flow — Full Database Schema
+// Multi-tenant SaaS: Client, Media & Finance Management
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==================== ENUMS ====================
+
+enum UserRole {
+  SUPERADMIN
+  TENANT_ADMIN
+  TENANT_STAFF
+  CLIENT_USER
+}
+
+enum FileKind {
+  PREVIEW
+  FINAL
+  RAW
+  OTHER
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+}
+
+enum ProjectStatus {
+  DRAFT
+  IN_PRODUCTION
+  IN_REVIEW
+  DELIVERED
+  ARCHIVED
+}
+
+// FileKind moved up
+
+enum DownloadStatus {
+  STARTED
+  COMPLETED
+  FAILED
+}
+
+enum ContractType {
+  MONTHLY
+  PER_VIDEO
+  PER_PROJECT
+  ONE_OFF
+}
+
+enum ContractStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+  FINISHED
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+  REFUNDED
+}
+
+enum InvoiceItemType {
+  MONTHLY_FEE
+  VIDEO
+  PROJECT
+  ONE_OFF
+}
+
+enum PaymentMethod {
+  PIX
+  MANUAL
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  REFUNDED
+}
+
+enum BlockMode {
+  BLOCK_FINAL_ONLY
+  BLOCK_ALL
+}
+
+enum NotificationType {
+  INVOICE_REMINDER
+  INVOICE_OVERDUE
+  WELCOME
+  PASSWORD_RESET
+  FILE_PUBLISHED
+  DOWNLOAD_BLOCKED
+}
+
+enum JobStatus {
+  RUNNING
+  SUCCESS
+  FAILED
+  SKIPPED
+}
+
+// ==================== GLOBAL MODELS ====================
+
+model Tenant {
+  id                  String        @id @default(uuid())
+  name                String
+  slug                String        @unique
+  subdomain           String?       @unique
+  status              TenantStatus  @default(ACTIVE)
+  driveRootFolderId   String?
+  driveRefreshToken   String?
+  driveAccessToken    String?
+  driveTokenExpiry    DateTime?
+  driveEmail          String?
+  // Billing/block config
+  blockAfterDays      Int           @default(7)
+  blockMode           BlockMode     @default(BLOCK_FINAL_ONLY)
+  videoBillingMode    String        @default("CONSOLIDATED") // CONSOLIDATED | PER_DELIVERY
+  currency            String        @default("BRL")
+  // Mercado Pago
+  mpAccessToken       String?
+  // PIX settings
+  pixKey              String?
+  pixKeyType          String?       // CPF, CNPJ, EMAIL, PHONE, RANDOM
+  pixReceiverName     String?
+  // Branding
+  logoUrl             String?
+  primaryColor        String?       @default("#6366f1")
+  // Timestamps
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  // Relations
+  members             TenantMember[]
+  clients             Client[]
+  projects            Project[]
+  files               File[]
+  downloadEvents      DownloadEvent[]
+  contracts           Contract[]
+  invoices            Invoice[]
+  payments            Payment[]
+  notificationLogs    NotificationLog[]
+  auditLogs           AuditLog[]
+  clientAccess        ClientAccess[]
+
+  @@index([slug])
+  @@index([subdomain])
+}
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  passwordHash    String
+  name            String
+  isSuperAdmin    Boolean   @default(false)
+  isActive        Boolean   @default(true)
+  emailVerifiedAt DateTime?
+  resetToken      String?
+  resetTokenExp   DateTime?
+  lastLoginAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  tenantMembers   TenantMember[]
+  clientAccess    ClientAccess[]
+
+  @@index([email])
+}
+
+model TenantMember {
+  id        String   @id @default(uuid())
+  tenantId  String
+  userId    String
+  role      UserRole // TENANT_ADMIN or TENANT_STAFF
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
+  @@index([tenantId])
+  @@index([userId])
+}
+
+model HolidayCalendar {
+  id        String   @id @default(uuid())
+  date      DateTime
+  name      String
+  country   String   @default("BR")
+  state     String?  // UF for regional holidays
+  createdAt DateTime @default(now())
+
+  @@unique([date, country, state])
+  @@index([country, state])
+}
+
+model JobRun {
+  id          String    @id @default(uuid())
+  jobName     String
+  tenantId    String?
+  status      JobStatus
+  startedAt   DateTime  @default(now())
+  finishedAt  DateTime?
+  details     String?   // JSON with extra info
+  error       String?
+  idempotencyKey String? @unique
+  createdAt   DateTime  @default(now())
+
+  @@index([jobName])
+  @@index([tenantId])
+  @@index([idempotencyKey])
+}
+
+// ==================== TENANT-SCOPED MODELS ====================
+
+model Client {
+  id              String   @id @default(uuid())
+  tenantId        String
+  name            String
+  email           String?
+  phone           String?
+  notes           String?
+  driveFolderId   String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  projects        Project[]
+  clientAccess    ClientAccess[]
+  contracts       Contract[]
+  invoices        Invoice[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+}
+
+model ClientAccess {
+  id        String   @id @default(uuid())
+  userId    String
+  tenantId  String
+  clientId  String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  downloadEvents DownloadEvent[]
+
+  @@unique([userId, tenantId, clientId])
+  @@index([userId])
+  @@index([tenantId])
+  @@index([clientId])
+}
+
+model Project {
+  id              String        @id @default(uuid())
+  tenantId        String
+  clientId        String
+  name            String
+  description     String?
+  status          ProjectStatus @default(DRAFT)
+  driveFolderId   String?
+  drivePreviewFolderId  String?
+  driveFinalFolderId    String?
+  driveRawFolderId      String?
+  driveOtherFolderId    String?
+  deliveredAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client          Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  files           File[]
+
+  @@index([tenantId])
+  @@index([clientId])
+  @@index([status])
+}
+
+model File {
+  id              String     @id @default(uuid())
+  tenantId        String
+  projectId       String
+  name            String
+  kind            FileKind
+  driveFileId     String?
+  driveFolderId   String?
+  mimeType        String?
+  sizeBytes       BigInt?
+  md5Hash         String?
+  isVisible       Boolean    @default(false)
+  publishedAt     DateTime?
+  tags            String?    // JSON array
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  tenant          Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  project         Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  downloadEvents  DownloadEvent[]
+  invoiceItems    InvoiceItem[]
+
+  @@index([tenantId])
+  @@index([projectId])
+  @@index([kind])
+  @@index([publishedAt])
+}
+
+model DownloadEvent {
+  id              String         @id @default(uuid())
+  tenantId        String
+  fileId          String
+  clientAccessId  String
+  status          DownloadStatus
+  ip              String?
+  userAgent       String?
+  bytesSent       BigInt?
+  startedAt       DateTime       @default(now())
+  completedAt     DateTime?
+
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  file            File           @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  clientAccess    ClientAccess   @relation(fields: [clientAccessId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([fileId])
+  @@index([clientAccessId])
+  @@index([startedAt])
+}
+
+// ==================== FINANCIAL MODELS ====================
+
+model Contract {
+  id              String         @id @default(uuid())
+  tenantId        String
+  clientId        String
+  type            ContractType
+  status          ContractStatus @default(ACTIVE)
+  name            String
+  description     String?
+  // Pricing
+  monthlyAmount   Decimal?       @db.Decimal(10, 2)
+  perVideoAmount  Decimal?       @db.Decimal(10, 2)
+  perProjectAmount Decimal?      @db.Decimal(10, 2)
+  oneOffAmount    Decimal?       @db.Decimal(10, 2)
+  currency        String         @default("BRL")
+  // Billing config
+  billingDay      Int?           @default(5) // nth business day
+  startDate       DateTime
+  endDate         DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client          Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  invoices        Invoice[]
+
+  @@index([tenantId])
+  @@index([clientId])
+  @@index([type])
+  @@index([status])
+}
+
+model Invoice {
+  id                String        @id @default(uuid())
+  tenantId          String
+  clientId          String
+  contractId        String?
+  // Dates
+  dueDate           DateTime
+  paidAt            DateTime?
+  // Amounts
+  totalAmount       Decimal       @db.Decimal(10, 2)
+  currency          String        @default("BRL")
+  // Status
+  status            InvoiceStatus @default(PENDING)
+  // PIX data
+  pixPayload        String?       // copia e cola
+  pixQrCode         String?       // base64 QR
+  // External provider
+  externalProvider  String?       @default("mercado_pago")
+  externalReference String?       @unique
+  // Meta
+  notes             String?
+  proofUrl          String?       // comprovante
+  referenceMonth    String?       // "2026-03" for monthly
+  // Idempotency
+  idempotencyKey    String?       @unique
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  tenant            Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client            Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  contract          Contract?     @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  items             InvoiceItem[]
+  payments          Payment[]
+
+  @@index([tenantId])
+  @@index([clientId])
+  @@index([contractId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([referenceMonth])
+}
+
+model InvoiceItem {
+  id            String          @id @default(uuid())
+  invoiceId     String
+  description   String
+  quantity      Int             @default(1)
+  unitPrice     Decimal         @db.Decimal(10, 2)
+  totalAmount   Decimal         @db.Decimal(10, 2)
+  type          InvoiceItemType
+  fileId        String?         // for PER_VIDEO billing
+
+  invoice       Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  file          File?           @relation(fields: [fileId], references: [id], onDelete: SetNull)
+
+  @@index([invoiceId])
+}
+
+model Payment {
+  id                String        @id @default(uuid())
+  tenantId          String
+  invoiceId         String
+  method            PaymentMethod @default(PIX)
+  status            PaymentStatus @default(PENDING)
+  amount            Decimal       @db.Decimal(10, 2)
+  currency          String        @default("BRL")
+  // External
+  transactionId     String?
+  externalReference String?
+  // PIX specific
+  pixPayload        String?
+  pixQrCodeBase64   String?
+  // Meta
+  confirmedAt       DateTime?
+  rawWebhookData    String?       // JSON
+  notes             String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  tenant            Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoice           Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([invoiceId])
+  @@index([transactionId])
+  @@index([status])
+}
+
+// ==================== SYSTEM MODELS ====================
+
+model NotificationLog {
+  id            String           @id @default(uuid())
+  tenantId      String
+  type          NotificationType
+  recipientEmail String
+  subject       String?
+  body          String?
+  invoiceId     String?
+  sentAt        DateTime         @default(now())
+  success       Boolean          @default(true)
+  error         String?
+
+  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([type])
+  @@index([invoiceId])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  tenantId    String
+  userId      String?
+  action      String   // e.g. "project.create", "file.publish", "invoice.create"
+  entityType  String?  // e.g. "Project", "File", "Invoice"
+  entityId    String?
+  details     String?  // JSON
+  ip          String?
+  createdAt   DateTime @default(now())
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
