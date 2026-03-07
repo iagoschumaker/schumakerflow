@@ -186,20 +186,6 @@ export default function SettingsPage() {
                     </div>
                 )}
 
-                {/* Flow Info */}
-                <div className="card">
-                    <div className="card-header">
-                        <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                            <Settings size={18} /> Informações do Flow
-                        </h2>
-                    </div>
-                    <div style={{ padding: 'var(--space-4)' }}>
-                        <div>
-                            <div className="text-sm text-muted" style={{ marginBottom: '4px' }}>Nome</div>
-                            <div className="font-semibold">{tenant?.name || '—'}</div>
-                        </div>
-                    </div>
-                </div>
 
                 {/* Google Drive Connection */}
                 <div className="card" style={{ marginTop: 'var(--space-4)' }}>
