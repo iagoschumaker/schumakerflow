@@ -780,6 +780,12 @@ tbody tr:last-child td {
   color: var(--color-text-muted);
 }
 
+/* Theme-aware logo switching */
+.login-logo-light { display: inline-block; }
+.login-logo-dark { display: none; }
+[data-theme="dark"] .login-logo-light { display: none; }
+[data-theme="dark"] .login-logo-dark { display: inline-block; }
+
 /* ========================================
    Empty States
    ======================================== */

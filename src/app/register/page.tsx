@@ -55,7 +55,10 @@ export default function RegisterPage() {
         <div className="login-container">
             <div className="login-card">
                 <div className="login-logo">
-                    <div style={{ marginBottom: '0.5rem', color: 'var(--color-primary)' }}><Zap size={40} /></div>
+                    <div style={{ marginBottom: '0.5rem' }}>
+                        <img src="/icons/favicon-512-black.png" alt="SFlow" className="login-logo-light" style={{ width: 56, height: 56 }} />
+                        <img src="/icons/favicon-512-white.png" alt="SFlow" className="login-logo-dark" style={{ width: 56, height: 56 }} />
+                    </div>
                     <h1>SFlow</h1>
                     <p>Crie sua conta</p>
                 </div>
