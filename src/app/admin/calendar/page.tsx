@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useToast } from '@/components/Toast';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, X, Trash2, Edit2, Clock, MapPin, Loader2, ExternalLink, Bell } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, X, Trash2, Edit2, Clock, MapPin, Loader2, ExternalLink, Bell, GripVertical } from 'lucide-react';
 
 const REMINDER_OPTIONS = [
     { label: 'Sem lembrete', value: -1 },
@@ -32,26 +32,15 @@ const WEEKDAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 const MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
 function getMonthDays(year: number, month: number) {
-    const firstDaySun = new Date(year, month, 1).getDay(); // 0=Sun
-    const firstDay = firstDaySun === 0 ? 6 : firstDaySun - 1; // Convert to Mon=0
+    const firstDaySun = new Date(year, month, 1).getDay();
+    const firstDay = firstDaySun === 0 ? 6 : firstDaySun - 1;
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const prevDays = new Date(year, month, 0).getDate();
-
     const days: { date: Date; current: boolean }[] = [];
-
-    // Previous month fill
-    for (let i = firstDay - 1; i >= 0; i--) {
-        days.push({ date: new Date(year, month - 1, prevDays - i), current: false });
-    }
-    // Current month
-    for (let i = 1; i <= daysInMonth; i++) {
-        days.push({ date: new Date(year, month, i), current: true });
-    }
-    // Next month fill
+    for (let i = firstDay - 1; i >= 0; i--) days.push({ date: new Date(year, month - 1, prevDays - i), current: false });
+    for (let i = 1; i <= daysInMonth; i++) days.push({ date: new Date(year, month, i), current: true });
     const remaining = 42 - days.length;
-    for (let i = 1; i <= remaining; i++) {
-        days.push({ date: new Date(year, month + 1, i), current: false });
-    }
+    for (let i = 1; i <= remaining; i++) days.push({ date: new Date(year, month + 1, i), current: false });
     return days;
 }
 
@@ -65,11 +54,8 @@ function formatTime(dateStr: string) {
     return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
-function toLocalISO(date: Date, time?: string) {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}T${time || '09:00'}:00`;
+function dateToStr(d: Date) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 export default function CalendarPage() {
@@ -90,6 +76,10 @@ export default function CalendarPage() {
     // Form
     const [form, setForm] = useState({ summary: '', description: '', startDate: '', startTime: '09:00', endDate: '', endTime: '10:00', allDay: false, reminders: [10] as number[] });
 
+    // Drag & Drop
+    const [dragEvent, setDragEvent] = useState<CalEvent | null>(null);
+    const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+
     const fetchEvents = useCallback(async () => {
         setLoading(true);
         try {
@@ -109,27 +99,18 @@ export default function CalendarPage() {
 
     const days = getMonthDays(year, month);
 
-    const prevMonth = () => {
-        if (month === 0) { setYear(y => y - 1); setMonth(11); }
-        else setMonth(m => m - 1);
-    };
-    const nextMonth = () => {
-        if (month === 11) { setYear(y => y + 1); setMonth(0); }
-        else setMonth(m => m + 1);
-    };
+    const prevMonth = () => { if (month === 0) { setYear((y: number) => y - 1); setMonth(11); } else setMonth((m: number) => m - 1); };
+    const nextMonth = () => { if (month === 11) { setYear((y: number) => y + 1); setMonth(0); } else setMonth((m: number) => m + 1); };
     const goToday = () => { setYear(today.getFullYear()); setMonth(today.getMonth()); };
 
     const openCreate = (date: Date) => {
-        const ds = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        const ds = dateToStr(date);
         setForm({ summary: '', description: '', startDate: ds, startTime: '09:00', endDate: ds, endTime: '10:00', allDay: false, reminders: [10] });
         setSelectedDate(date);
         setModal('create');
     };
 
-    const openView = (ev: CalEvent) => {
-        setSelectedEvent(ev);
-        setModal('view');
-    };
+    const openView = (ev: CalEvent) => { setSelectedEvent(ev); setModal('view'); };
 
     const openEdit = (ev: CalEvent) => {
         const sDate = ev.start.split('T')[0];
@@ -149,7 +130,7 @@ export default function CalendarPage() {
                 summary: form.summary,
                 description: form.description,
                 allDay: form.allDay,
-                reminders: form.reminders.filter(r => r > 0),
+                reminders: form.reminders.filter((r: number) => r > 0),
             };
             if (form.allDay) {
                 payload.start = form.startDate;
@@ -158,7 +139,6 @@ export default function CalendarPage() {
                 payload.start = `${form.startDate}T${form.startTime}:00`;
                 payload.end = `${form.endDate || form.startDate}T${form.endTime}:00`;
             }
-
             if (modal === 'edit' && selectedEvent) {
                 payload.eventId = selectedEvent.id;
                 await fetch('/api/admin/calendar', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -187,7 +167,63 @@ export default function CalendarPage() {
         }
     };
 
-    const getEventsForDay = (date: Date) => events.filter(ev => {
+    // Drag & Drop — move event to another day
+    const handleDragStart = (ev: CalEvent, e: React.DragEvent) => {
+        setDragEvent(ev);
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', ev.id);
+        // Make the drag image smaller
+        const el = e.currentTarget as HTMLElement;
+        e.dataTransfer.setDragImage(el, el.offsetWidth / 2, 10);
+    };
+
+    const handleDragOverDay = (idx: number, e: React.DragEvent) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        setDragOverIdx(idx);
+    };
+
+    const handleDragLeaveDay = () => { setDragOverIdx(null); };
+
+    const handleDropOnDay = async (targetDate: Date) => {
+        setDragOverIdx(null);
+        if (!dragEvent) return;
+
+        const ev = dragEvent;
+        setDragEvent(null);
+
+        // Calculate time offset
+        const oldStart = new Date(ev.start);
+        const newDateStr = dateToStr(targetDate);
+
+        // If same day, ignore
+        if (isSameDay(oldStart, targetDate)) return;
+
+        try {
+            const payload: any = { eventId: ev.id, allDay: ev.allDay };
+            if (ev.allDay) {
+                payload.start = newDateStr;
+                const oldEnd = new Date(ev.end || ev.start);
+                const dayDiff = Math.round((oldEnd.getTime() - oldStart.getTime()) / 86400000);
+                const newEnd = new Date(targetDate);
+                newEnd.setDate(newEnd.getDate() + dayDiff);
+                payload.end = dateToStr(newEnd);
+            } else {
+                const time = formatTime(ev.start);
+                const endTime = formatTime(ev.end);
+                payload.start = `${newDateStr}T${time}:00`;
+                payload.end = `${newDateStr}T${endTime}:00`;
+            }
+
+            await fetch('/api/admin/calendar', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            showToast(`"${ev.summary}" movido para ${targetDate.toLocaleDateString('pt-BR')}`, 'success');
+            fetchEvents();
+        } catch {
+            showToast('Erro ao mover evento', 'error');
+        }
+    };
+
+    const getEventsForDay = (date: Date) => events.filter((ev: CalEvent) => {
         const evDate = new Date(ev.start);
         return isSameDay(evDate, date);
     });
@@ -217,9 +253,7 @@ export default function CalendarPage() {
             }}>
                 <button className="btn btn-secondary btn-sm" onClick={prevMonth}><ChevronLeft size={16} /></button>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700 }}>
-                        {MONTHS[month]} {year}
-                    </h2>
+                    <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700 }}>{MONTHS[month]} {year}</h2>
                     <button className="btn btn-secondary btn-sm" onClick={goToday} style={{ fontSize: '0.75rem', padding: '4px 10px' }}>Hoje</button>
                 </div>
                 <button className="btn btn-secondary btn-sm" onClick={nextMonth}><ChevronRight size={16} /></button>
@@ -227,10 +261,8 @@ export default function CalendarPage() {
 
             {/* Calendar Grid */}
             <div style={{
-                background: 'var(--color-surface)',
-                borderRadius: 'var(--radius-lg)',
-                border: '1px solid var(--color-border)',
-                overflow: 'hidden',
+                background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)',
+                border: '1px solid var(--color-border)', overflow: 'hidden',
             }}>
                 {/* Weekday headers */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', borderBottom: '1px solid var(--color-border)' }}>
@@ -254,57 +286,60 @@ export default function CalendarPage() {
                         {days.map((day, idx) => {
                             const isToday = isSameDay(day.date, today);
                             const dayEvents = getEventsForDay(day.date);
+                            const isDragOver = dragOverIdx === idx;
                             return (
                                 <div
                                     key={idx}
                                     onClick={() => openCreate(day.date)}
+                                    onDragOver={(e) => handleDragOverDay(idx, e)}
+                                    onDragLeave={handleDragLeaveDay}
+                                    onDrop={(e) => { e.preventDefault(); handleDropOnDay(day.date); }}
                                     style={{
-                                        minHeight: 90,
-                                        padding: '6px 8px',
+                                        minHeight: 90, padding: '6px 8px',
                                         borderRight: (idx + 1) % 7 !== 0 ? '1px solid var(--color-border)' : 'none',
                                         borderBottom: idx < 35 ? '1px solid var(--color-border)' : 'none',
-                                        cursor: 'pointer',
+                                        cursor: 'pointer', overflow: 'hidden',
                                         opacity: day.current ? 1 : 0.35,
-                                        background: isToday ? 'color-mix(in srgb, var(--color-primary) 8%, transparent)' : 'transparent',
+                                        background: isDragOver
+                                            ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)'
+                                            : isToday ? 'color-mix(in srgb, var(--color-primary) 8%, transparent)' : 'transparent',
                                         transition: 'background 0.15s',
-                                        overflow: 'hidden',
+                                        outline: isDragOver ? '2px solid var(--color-primary)' : 'none',
+                                        outlineOffset: '-2px',
                                     }}
-                                    onMouseEnter={(e) => { if (!isToday) (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--color-primary) 4%, transparent)'; }}
-                                    onMouseLeave={(e) => { if (!isToday) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                                    onMouseEnter={(e: React.MouseEvent) => { if (!isToday && !isDragOver) (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--color-primary) 4%, transparent)'; }}
+                                    onMouseLeave={(e: React.MouseEvent) => { if (!isToday && !isDragOver) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
                                 >
                                     <div style={{
-                                        fontWeight: isToday ? 800 : 600,
-                                        fontSize: '0.85rem',
-                                        color: isToday ? 'var(--color-primary)' : 'var(--color-text)',
-                                        marginBottom: 4,
-                                        width: 26, height: 26,
+                                        fontWeight: isToday ? 800 : 600, fontSize: '0.85rem',
+                                        color: isToday ? '#fff' : 'var(--color-text)',
+                                        marginBottom: 4, width: 26, height: 26,
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         borderRadius: '50%',
                                         background: isToday ? 'var(--color-primary)' : 'transparent',
-                                        ...(isToday ? { color: '#fff' } : {}),
                                     }}>
                                         {day.date.getDate()}
                                     </div>
-                                    {dayEvents.slice(0, 3).map(ev => (
+                                    {dayEvents.slice(0, 3).map((ev: CalEvent) => (
                                         <div
                                             key={ev.id}
-                                            onClick={(e) => { e.stopPropagation(); openView(ev); }}
+                                            draggable
+                                            onDragStart={(e) => { e.stopPropagation(); handleDragStart(ev, e); }}
+                                            onDragEnd={() => { setDragEvent(null); setDragOverIdx(null); }}
+                                            onClick={(e: React.MouseEvent) => { e.stopPropagation(); openView(ev); }}
                                             style={{
-                                                fontSize: '0.7rem',
-                                                padding: '2px 5px',
-                                                marginBottom: 2,
-                                                borderRadius: 4,
-                                                background: 'var(--color-primary)',
-                                                color: '#fff',
-                                                whiteSpace: 'nowrap',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                                cursor: 'pointer',
-                                                fontWeight: 600,
+                                                fontSize: '0.7rem', padding: '2px 5px', marginBottom: 2,
+                                                borderRadius: 4, background: 'var(--color-primary)', color: '#fff',
+                                                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                                cursor: 'grab', fontWeight: 600,
+                                                display: 'flex', alignItems: 'center', gap: 2,
                                             }}
-                                            title={ev.summary}
+                                            title={`${ev.summary} (arraste para mover)`}
                                         >
-                                            {!ev.allDay && formatTime(ev.start) ? `${formatTime(ev.start)} ` : ''}{ev.summary}
+                                            <GripVertical size={10} style={{ opacity: 0.6, flexShrink: 0 }} />
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                {!ev.allDay && formatTime(ev.start) ? `${formatTime(ev.start)} ` : ''}{ev.summary}
+                                            </span>
                                         </div>
                                     ))}
                                     {dayEvents.length > 3 && (
@@ -322,12 +357,11 @@ export default function CalendarPage() {
             {/* View Modal */}
             {modal === 'view' && selectedEvent && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setModal(null)}>
-                    <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)', maxWidth: 480, width: '100%', border: '1px solid var(--color-border)' }} onClick={e => e.stopPropagation()}>
+                    <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)', maxWidth: 480, width: '100%', border: '1px solid var(--color-border)', maxHeight: '90vh', overflowY: 'auto' }} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                             <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700 }}>{selectedEvent.summary}</h3>
                             <button onClick={() => setModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}><X size={18} /></button>
                         </div>
-
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>
                                 <Clock size={15} />
@@ -350,8 +384,7 @@ export default function CalendarPage() {
                                 <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text)', whiteSpace: 'pre-wrap' }}>{selectedEvent.description}</p>
                             )}
                         </div>
-
-                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                             {selectedEvent.htmlLink && (
                                 <a href={selectedEvent.htmlLink} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                     <ExternalLink size={13} /> Google
@@ -368,10 +401,21 @@ export default function CalendarPage() {
                 </div>
             )}
 
-            {/* Create / Edit Modal */}
+            {/* Create / Edit Modal — Mobile Responsive */}
             {(modal === 'create' || modal === 'edit') && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setModal(null)}>
-                    <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)', maxWidth: 480, width: '100%', border: '1px solid var(--color-border)' }} onClick={e => e.stopPropagation()}>
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: 0 }} onClick={() => setModal(null)}>
+                    <div
+                        style={{
+                            background: 'var(--color-surface)', borderRadius: '16px 16px 0 0',
+                            padding: 'var(--space-5)', width: '100%', maxWidth: 520,
+                            border: '1px solid var(--color-border)', borderBottom: 'none',
+                            maxHeight: '90vh', overflowY: 'auto',
+                        }}
+                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                    >
+                        {/* Drag handle bar for mobile feel */}
+                        <div style={{ width: 40, height: 4, background: 'var(--color-border)', borderRadius: 2, margin: '0 auto 16px' }} />
+
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                             <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700 }}>{modal === 'edit' ? 'Editar Evento' : 'Novo Evento'}</h3>
                             <button onClick={() => setModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}><X size={18} /></button>
@@ -380,40 +424,45 @@ export default function CalendarPage() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                             <div>
                                 <label style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: 4, display: 'block' }}>Título *</label>
-                                <input className="input" value={form.summary} onChange={e => setForm({ ...form, summary: e.target.value })} placeholder="Nome do evento" autoFocus />
+                                <input className="input" value={form.summary} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, summary: e.target.value })} placeholder="Nome do evento" autoFocus />
                             </div>
 
                             <div>
                                 <label style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: 4, display: 'block' }}>Descrição</label>
-                                <textarea className="input" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Detalhes do evento" rows={3} style={{ resize: 'vertical' }} />
+                                <textarea className="input" value={form.description} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setForm({ ...form, description: e.target.value })} placeholder="Detalhes do evento" rows={2} style={{ resize: 'vertical' }} />
                             </div>
 
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <input type="checkbox" id="allDay" checked={form.allDay} onChange={e => setForm({ ...form, allDay: e.target.checked })} />
+                                <input type="checkbox" id="allDay" checked={form.allDay} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, allDay: e.target.checked })} />
                                 <label htmlFor="allDay" style={{ fontSize: '0.85rem' }}>Dia inteiro</label>
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: form.allDay ? '1fr 1fr' : '1fr auto 1fr auto', gap: 10 }}>
-                                <div>
-                                    <label style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: 2, display: 'block' }}>Início</label>
-                                    <input className="input" type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} />
-                                </div>
-                                {!form.allDay && (
-                                    <div>
-                                        <label style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: 2, display: 'block' }}>Hora</label>
-                                        <input className="input" type="time" value={form.startTime} onChange={e => setForm({ ...form, startTime: e.target.value })} />
+                            {/* Date/Time — stacked on mobile */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                    <div style={{ flex: '1 1 140px', minWidth: 0 }}>
+                                        <label style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: 2, display: 'block' }}>Início</label>
+                                        <input className="input" type="date" value={form.startDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, startDate: e.target.value })} style={{ width: '100%' }} />
                                     </div>
-                                )}
-                                <div>
-                                    <label style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: 2, display: 'block' }}>Fim</label>
-                                    <input className="input" type="date" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })} />
+                                    {!form.allDay && (
+                                        <div style={{ flex: '0 1 110px', minWidth: 90 }}>
+                                            <label style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: 2, display: 'block' }}>Hora</label>
+                                            <input className="input" type="time" value={form.startTime} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, startTime: e.target.value })} style={{ width: '100%' }} />
+                                        </div>
+                                    )}
                                 </div>
-                                {!form.allDay && (
-                                    <div>
-                                        <label style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: 2, display: 'block' }}>Hora</label>
-                                        <input className="input" type="time" value={form.endTime} onChange={e => setForm({ ...form, endTime: e.target.value })} />
+                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                    <div style={{ flex: '1 1 140px', minWidth: 0 }}>
+                                        <label style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: 2, display: 'block' }}>Fim</label>
+                                        <input className="input" type="date" value={form.endDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, endDate: e.target.value })} style={{ width: '100%' }} />
                                     </div>
-                                )}
+                                    {!form.allDay && (
+                                        <div style={{ flex: '0 1 110px', minWidth: 90 }}>
+                                            <label style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: 2, display: 'block' }}>Hora</label>
+                                            <input className="input" type="time" value={form.endTime} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, endTime: e.target.value })} style={{ width: '100%' }} />
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Reminders */}
@@ -421,12 +470,12 @@ export default function CalendarPage() {
                                 <label style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <Bell size={14} /> Lembretes
                                 </label>
-                                {form.reminders.map((rem, i) => (
+                                {form.reminders.map((rem: number, i: number) => (
                                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                                         <select
                                             className="input"
                                             value={rem}
-                                            onChange={e => {
+                                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                                                 const newReminders = [...form.reminders];
                                                 newReminders[i] = Number(e.target.value);
                                                 setForm({ ...form, reminders: newReminders });
@@ -440,9 +489,8 @@ export default function CalendarPage() {
                                         {form.reminders.length > 1 && (
                                             <button
                                                 type="button"
-                                                onClick={() => setForm({ ...form, reminders: form.reminders.filter((_, j) => j !== i) })}
+                                                onClick={() => setForm({ ...form, reminders: form.reminders.filter((_: number, j: number) => j !== i) })}
                                                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger)', padding: 4 }}
-                                                title="Remover lembrete"
                                             >
                                                 <X size={14} />
                                             </button>
@@ -462,7 +510,7 @@ export default function CalendarPage() {
                             </div>
                         </div>
 
-                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20, paddingBottom: 'env(safe-area-inset-bottom, 8px)' }}>
                             <button className="btn btn-secondary" onClick={() => setModal(null)}>Cancelar</button>
                             <button className="btn btn-primary" disabled={saving} onClick={handleSave} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 {saving ? <Loader2 size={14} className="animate-spin" /> : null}
