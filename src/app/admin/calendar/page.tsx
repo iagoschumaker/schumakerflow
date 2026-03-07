@@ -140,7 +140,13 @@ export default function CalendarPage() {
 
     const openEdit = (ev: CalEvent) => {
         const sDate = ev.start.split('T')[0];
-        const eDate = (ev.end || ev.start).split('T')[0];
+        let eDate = (ev.end || ev.start).split('T')[0];
+        // Google Calendar returns exclusive end date for all-day events — subtract 1 day for display
+        if (ev.allDay && eDate) {
+            const parts = eDate.split('-').map(Number);
+            const d = new Date(parts[0], parts[1] - 1, parts[2] - 1);
+            eDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
         const sTime = ev.allDay ? '09:00' : formatTime(ev.start);
         const eTime = ev.allDay ? '10:00' : formatTime(ev.end);
         setForm({ summary: ev.summary, description: ev.description, startDate: sDate, startTime: sTime, endDate: eDate, endTime: eTime, allDay: ev.allDay, reminders: [10] });
@@ -158,7 +164,11 @@ export default function CalendarPage() {
             };
             if (form.allDay) {
                 payload.start = form.startDate;
-                payload.end = form.endDate || form.startDate;
+                // Google Calendar uses exclusive end date for all-day events (need +1 day)
+                const endDateStr = form.endDate || form.startDate;
+                const endParts = endDateStr.split('-').map(Number);
+                const endPlus1 = new Date(endParts[0], endParts[1] - 1, endParts[2] + 1);
+                payload.end = `${endPlus1.getFullYear()}-${String(endPlus1.getMonth() + 1).padStart(2, '0')}-${String(endPlus1.getDate()).padStart(2, '0')}`;
             } else {
                 payload.start = `${form.startDate}T${form.startTime}:00`;
                 payload.end = `${form.endDate || form.startDate}T${form.endTime}:00`;
@@ -599,10 +609,11 @@ export default function CalendarPage() {
                                 <label htmlFor="allDay" style={{ fontSize: '0.85rem', marginBottom: 0 }}>Dia inteiro</label>
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: form.allDay ? '1fr 1fr' : '1fr 1fr', gap: 'var(--space-3)' }}>
+                            {/* Start row */}
+                            <div style={{ display: 'grid', gridTemplateColumns: form.allDay ? '1fr' : '1fr 1fr', gap: 'var(--space-3)' }}>
                                 <div className="form-group">
                                     <label className="form-label">Início</label>
-                                    <input className="form-input" type="date" value={form.startDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, startDate: e.target.value })} />
+                                    <input className="form-input" type="date" value={form.startDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, startDate: e.target.value, endDate: e.target.value })} />
                                 </div>
                                 {!form.allDay && (
                                     <div className="form-group">
@@ -610,6 +621,9 @@ export default function CalendarPage() {
                                         <input className="form-input" type="time" value={form.startTime} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, startTime: e.target.value })} />
                                     </div>
                                 )}
+                            </div>
+                            {/* End row */}
+                            <div style={{ display: 'grid', gridTemplateColumns: form.allDay ? '1fr' : '1fr 1fr', gap: 'var(--space-3)' }}>
                                 <div className="form-group">
                                     <label className="form-label">Fim</label>
                                     <input className="form-input" type="date" value={form.endDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, endDate: e.target.value })} />
