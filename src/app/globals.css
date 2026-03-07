@@ -801,6 +801,7 @@ tbody tr:last-child td {
 .login-split {
   display: flex;
   min-height: 100vh;
+  height: 100vh;
 }
 
 .login-split-banner {
@@ -837,13 +838,39 @@ tbody tr:last-child td {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-bg);
+  background: #0d0d14;
+  background-image:
+    radial-gradient(ellipse 600px 500px at 50% 50%, rgba(99, 102, 241, 0.08) 0%, transparent 70%),
+    radial-gradient(ellipse 300px 300px at 50% 45%, rgba(124, 58, 237, 0.06) 0%, transparent 60%);
   padding: var(--space-8) var(--space-6);
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme="light"] .login-split-form {
+  background: #f8f9fc;
+  background-image:
+    radial-gradient(ellipse 600px 500px at 50% 50%, rgba(99, 102, 241, 0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 300px 300px at 50% 45%, rgba(124, 58, 237, 0.04) 0%, transparent 60%);
+}
+
+.login-split-form .login-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="light"] .login-split-form .login-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
 }
 
 @media (max-width: 768px) {
   .login-split {
     flex-direction: column;
+    height: auto;
   }
 
   .login-split-banner {
@@ -852,7 +879,13 @@ tbody tr:last-child td {
 
   .login-split-form {
     flex: 1;
-    padding: var(--space-4);
+    min-height: 100vh;
+    padding: var(--space-6) var(--space-4);
+  }
+
+  .login-split-form .login-card {
+    max-width: 340px;
+    padding: var(--space-6);
   }
 }
 
