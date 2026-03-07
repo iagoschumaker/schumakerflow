@@ -427,15 +427,36 @@ export default function PortalProjectsPage() {
                                                                             {/* Expanded: Preview + Download */}
                                                                             {isFileExpanded && (
                                                                                 <div style={{ borderTop: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)' }}>
-                                                                                    {/* Preview thumbnail */}
+                                                                                    {/* File preview */}
                                                                                     {file.driveFileId && !file.driveFileId.startsWith('mock_') && (
-                                                                                        <div style={{ background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-                                                                                            <img
-                                                                                                src={`https://lh3.googleusercontent.com/d/${file.driveFileId}=w800`}
-                                                                                                alt={file.name}
-                                                                                                style={{ maxWidth: '100%', maxHeight: 300, objectFit: 'contain', borderRadius: 4 }}
-                                                                                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                                                                                            />
+                                                                                        <div style={{ background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                                            {file.mimeType?.startsWith('video/') ? (
+                                                                                                <video
+                                                                                                    src={`/api/files/${file.id}/download`}
+                                                                                                    controls
+                                                                                                    preload="metadata"
+                                                                                                    style={{ width: '100%', maxHeight: 400 }}
+                                                                                                    controlsList="nodownload"
+                                                                                                />
+                                                                                            ) : file.mimeType?.startsWith('image/') ? (
+                                                                                                <img
+                                                                                                    src={`/api/files/${file.id}/download`}
+                                                                                                    alt={file.name}
+                                                                                                    style={{ maxWidth: '100%', maxHeight: 400, objectFit: 'contain' }}
+                                                                                                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                                                                                />
+                                                                                            ) : file.mimeType?.includes('pdf') ? (
+                                                                                                <iframe
+                                                                                                    src={`/api/files/${file.id}/download`}
+                                                                                                    style={{ width: '100%', height: 400, border: 'none', background: '#fff' }}
+                                                                                                    title={file.name}
+                                                                                                />
+                                                                                            ) : (
+                                                                                                <div style={{ padding: 24, textAlign: 'center', color: '#9ca3af' }}>
+                                                                                                    <FileText size={32} style={{ marginBottom: 8 }} />
+                                                                                                    <div style={{ fontSize: '0.8rem' }}>Preview não disponível — baixe o arquivo</div>
+                                                                                                </div>
+                                                                                            )}
                                                                                         </div>
                                                                                     )}
 
