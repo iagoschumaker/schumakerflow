@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { LayoutDashboard, Users, FolderKanban, FileText, Download, DollarSign, Calendar, Settings, Shield, Zap, LogOut, Menu } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import { ToastProvider } from '@/components/Toast';
+import InstallPrompt from '@/components/InstallPrompt';
 
 interface UserInfo {
     userId: string;
@@ -156,6 +157,7 @@ export default function AdminLayout({
         }
       `}</style>
             </div>
+            <InstallPrompt />
         </ToastProvider >
     );
 }

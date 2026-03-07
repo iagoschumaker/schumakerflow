@@ -20,7 +20,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
-      <head />
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Schumaker Flow" />
+      </head>
       <body>
         <script dangerouslySetInnerHTML={{
           __html: `
