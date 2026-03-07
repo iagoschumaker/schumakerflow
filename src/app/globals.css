@@ -872,8 +872,11 @@ tbody tr:last-child td {
 
 @media (max-width: 768px) {
   .login-split {
+    position: static;
     flex-direction: column;
+    width: 100%;
     height: auto;
+    min-height: 100vh;
   }
 
   .login-split-banner {
@@ -882,6 +885,7 @@ tbody tr:last-child td {
 
   .login-split-form {
     flex: 1;
+    width: 100%;
     min-height: 100vh;
     padding: var(--space-6) var(--space-4);
   }
