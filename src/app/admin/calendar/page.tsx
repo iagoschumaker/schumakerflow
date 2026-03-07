@@ -536,30 +536,31 @@ export default function CalendarPage() {
 
             {/* ── VIEW MODAL ── */}
             {modal === 'view' && selectedEvent && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setModal(null)}>
-                    <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)', maxWidth: 480, width: '100%', border: '1px solid var(--color-border)', maxHeight: '90vh', overflowY: 'auto' }}
-                        onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                            <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700 }}>{selectedEvent.summary}</h3>
-                            <button onClick={() => setModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}><X size={18} /></button>
+                <div className="modal-overlay" onClick={() => setModal(null)}>
+                    <div className="modal" onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ maxWidth: 480 }}>
+                        <div className="modal-header">
+                            <h2>{selectedEvent.summary}</h2>
+                            <button onClick={() => setModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', color: 'var(--color-text)' }}><X size={20} /></button>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>
-                                <Clock size={15} />
-                                {selectedEvent.allDay
-                                    ? <span>Dia inteiro — {new Date(selectedEvent.start).toLocaleDateString('pt-BR')}</span>
-                                    : <span>{new Date(selectedEvent.start).toLocaleDateString('pt-BR')} {formatTime(selectedEvent.start)} — {formatTime(selectedEvent.end)}</span>}
-                            </div>
-                            {selectedEvent.location && (
+                        <div className="modal-body">
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 8 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>
-                                    <MapPin size={15} /> {selectedEvent.location}
+                                    <Clock size={15} />
+                                    {selectedEvent.allDay
+                                        ? <span>Dia inteiro — {new Date(selectedEvent.start).toLocaleDateString('pt-BR')}</span>
+                                        : <span>{new Date(selectedEvent.start).toLocaleDateString('pt-BR')} {formatTime(selectedEvent.start)} — {formatTime(selectedEvent.end)}</span>}
                                 </div>
-                            )}
-                            {selectedEvent.description && (
-                                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text)', whiteSpace: 'pre-wrap' }}>{selectedEvent.description}</p>
-                            )}
+                                {selectedEvent.location && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>
+                                        <MapPin size={15} /> {selectedEvent.location}
+                                    </div>
+                                )}
+                                {selectedEvent.description && (
+                                    <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text)', whiteSpace: 'pre-wrap' }}>{selectedEvent.description}</p>
+                                )}
+                            </div>
                         </div>
-                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                        <div className="modal-footer">
                             {selectedEvent.htmlLink && (
                                 <a href={selectedEvent.htmlLink} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                     <ExternalLink size={13} /> Google
@@ -576,66 +577,59 @@ export default function CalendarPage() {
                 </div>
             )}
 
-            {/* ── CREATE / EDIT MODAL ── (centered, matching system style) */}
+            {/* ── CREATE / EDIT MODAL ── */}
             {(modal === 'create' || modal === 'edit') && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setModal(null)}>
-                    <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)', maxWidth: 480, width: '100%', border: '1px solid var(--color-border)', maxHeight: '90vh', overflowY: 'auto' }}
-                        onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                            <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700 }}>{modal === 'edit' ? 'Editar Evento' : 'Novo Evento'}</h3>
-                            <button onClick={() => setModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}><X size={18} /></button>
+                <div className="modal-overlay" onClick={() => setModal(null)}>
+                    <div className="modal" onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ maxWidth: 520 }}>
+                        <div className="modal-header">
+                            <h2>{modal === 'edit' ? 'Editar Evento' : 'Novo Evento'}</h2>
+                            <button onClick={() => setModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', color: 'var(--color-text)' }}><X size={20} /></button>
                         </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                            <div>
-                                <label style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: 4, display: 'block' }}>Título *</label>
-                                <input className="input" value={form.summary} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, summary: e.target.value })} placeholder="Nome do evento" autoFocus />
+                        <div className="modal-body">
+                            <div className="form-group">
+                                <label className="form-label">Título *</label>
+                                <input className="form-input" value={form.summary} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, summary: e.target.value })} placeholder="Nome do evento" autoFocus />
                             </div>
-                            <div>
-                                <label style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: 4, display: 'block' }}>Descrição</label>
-                                <textarea className="input" value={form.description} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setForm({ ...form, description: e.target.value })} placeholder="Detalhes do evento" rows={3} style={{ resize: 'vertical' }} />
+                            <div className="form-group">
+                                <label className="form-label">Descrição</label>
+                                <textarea className="form-input" value={form.description} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setForm({ ...form, description: e.target.value })} placeholder="Detalhes do evento" rows={3} />
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <input type="checkbox" id="allDay" checked={form.allDay} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, allDay: e.target.checked })} />
-                                <label htmlFor="allDay" style={{ fontSize: '0.85rem' }}>Dia inteiro</label>
+                                <label htmlFor="allDay" style={{ fontSize: '0.85rem', marginBottom: 0 }}>Dia inteiro</label>
                             </div>
 
-                            {/* Date/Time — responsive */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                    <div style={{ flex: '1 1 140px', minWidth: 0 }}>
-                                        <label style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: 2, display: 'block' }}>Início</label>
-                                        <input className="input" type="date" value={form.startDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, startDate: e.target.value })} style={{ width: '100%' }} />
-                                    </div>
-                                    {!form.allDay && (
-                                        <div style={{ flex: '0 1 110px', minWidth: 90 }}>
-                                            <label style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: 2, display: 'block' }}>Hora</label>
-                                            <input className="input" type="time" value={form.startTime} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, startTime: e.target.value })} style={{ width: '100%' }} />
-                                        </div>
-                                    )}
+                            <div style={{ display: 'grid', gridTemplateColumns: form.allDay ? '1fr 1fr' : '1fr 1fr', gap: 'var(--space-3)' }}>
+                                <div className="form-group">
+                                    <label className="form-label">Início</label>
+                                    <input className="form-input" type="date" value={form.startDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, startDate: e.target.value })} />
                                 </div>
-                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                    <div style={{ flex: '1 1 140px', minWidth: 0 }}>
-                                        <label style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: 2, display: 'block' }}>Fim</label>
-                                        <input className="input" type="date" value={form.endDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, endDate: e.target.value })} style={{ width: '100%' }} />
+                                {!form.allDay && (
+                                    <div className="form-group">
+                                        <label className="form-label">Hora Início</label>
+                                        <input className="form-input" type="time" value={form.startTime} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, startTime: e.target.value })} />
                                     </div>
-                                    {!form.allDay && (
-                                        <div style={{ flex: '0 1 110px', minWidth: 90 }}>
-                                            <label style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: 2, display: 'block' }}>Hora</label>
-                                            <input className="input" type="time" value={form.endTime} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, endTime: e.target.value })} style={{ width: '100%' }} />
-                                        </div>
-                                    )}
+                                )}
+                                <div className="form-group">
+                                    <label className="form-label">Fim</label>
+                                    <input className="form-input" type="date" value={form.endDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, endDate: e.target.value })} />
                                 </div>
+                                {!form.allDay && (
+                                    <div className="form-group">
+                                        <label className="form-label">Hora Fim</label>
+                                        <input className="form-input" type="time" value={form.endTime} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, endTime: e.target.value })} />
+                                    </div>
+                                )}
                             </div>
 
                             {/* Reminders */}
-                            <div>
-                                <label style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div className="form-group">
+                                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <Bell size={14} /> Lembretes
                                 </label>
                                 {form.reminders.map((rem: number, i: number) => (
                                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                                        <select className="input" value={rem}
+                                        <select className="form-input" value={rem}
                                             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                                                 const nr = [...form.reminders]; nr[i] = Number(e.target.value);
                                                 setForm({ ...form, reminders: nr });
@@ -659,10 +653,9 @@ export default function CalendarPage() {
                                 )}
                             </div>
                         </div>
-
-                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
-                            <button className="btn btn-secondary" onClick={() => setModal(null)}>Cancelar</button>
-                            <button className="btn btn-primary" disabled={saving} onClick={handleSave} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div className="modal-footer">
+                            <button type="button" className="btn btn-secondary" onClick={() => setModal(null)}>Cancelar</button>
+                            <button type="button" className="btn btn-primary" disabled={saving} onClick={handleSave} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 {saving ? <Loader2 size={14} className="animate-spin" /> : null}
                                 {modal === 'edit' ? 'Salvar' : 'Criar Evento'}
                             </button>
