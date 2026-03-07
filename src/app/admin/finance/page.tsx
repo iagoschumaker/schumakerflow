@@ -676,7 +676,7 @@ export default function FinancePage() {
                                             >
                                                 <Check size={13} /> <MessageCircle size={13} />
                                             </button>
-                                        )
+                                        )}
                                     </div>
                                 </div>
                             ))}
