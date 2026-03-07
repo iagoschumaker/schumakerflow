@@ -152,8 +152,16 @@ export default function SelectContextPage() {
     };
 
     return (
-        <div className="login-container">
-            <div className="login-card" style={{ maxWidth: 460 }}>
+        <div style={{
+            minHeight: '100vh',
+            background: '#0d0d14',
+            backgroundImage: 'radial-gradient(ellipse 600px 500px at 50% 50%, rgba(0, 122, 255, 0.08) 0%, transparent 70%), radial-gradient(ellipse 300px 300px at 50% 45%, rgba(0, 102, 214, 0.06) 0%, transparent 60%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 'var(--space-6) var(--space-4)',
+        }}>
+            <div className="login-card" style={{ maxWidth: 460, background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.06)' }}>
                 <div style={{ textAlign: 'center', marginBottom: 'var(--space-6)' }}>
                     <div style={{ fontSize: '2rem', marginBottom: 'var(--space-2)' }}>👋</div>
                     <h1 style={{

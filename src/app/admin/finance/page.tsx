@@ -185,7 +185,7 @@ export default function FinancePage() {
         if (!ok) return;
         await apiPost({ action: 'mark_paid', invoiceId });
         showToast('Fatura marcada como paga!', 'success');
-        loadData();
+        await loadData();
     };
 
     const handleCancelInvoice = async (invoiceId: string) => {
@@ -575,6 +575,13 @@ export default function FinancePage() {
                                             <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{inv.client.name}</span>
                                             <span style={{ fontSize: '0.65rem', fontWeight: 600, padding: '1px 8px', borderRadius: 6, background: `${statusColor(inv.status)}15`, color: statusColor(inv.status) }}>{statusLabel(inv.status)}</span>
                                         </div>
+                                        {inv.items && inv.items.length > 0 && (
+                                            <div style={{ fontSize: '0.76rem', color: 'var(--color-text-secondary)', marginTop: 2 }}>
+                                                {inv.items.map((item, idx) => (
+                                                    <span key={idx}>{item.description}{idx < inv.items!.length - 1 ? ', ' : ''}</span>
+                                                ))}
+                                            </div>
+                                        )}
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 3, fontSize: '0.76rem', color: 'var(--color-text-muted)', flexWrap: 'wrap' }}>
                                             <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><Calendar size={11} /> Venc: {new Date(inv.dueDate).toLocaleDateString('pt-BR')}</span>
                                             {inv.contract?.name && <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><ClipboardList size={11} /> {inv.contract.name}</span>}
@@ -617,6 +624,12 @@ export default function FinancePage() {
                                                     const desc = inv.contract?.name || inv.notes || null;
                                                     if (desc) msg += `${inv.contract?.name ? 'Contrato' : 'Descri\u00e7\u00e3o'}: ${desc}\n`;
                                                     if (inv.referenceMonth) msg += `Ref: ${formatMonth(inv.referenceMonth)}\n`;
+                                                    if (inv.items && inv.items.length > 0) {
+                                                        msg += `\n*Itens:*\n`;
+                                                        inv.items.forEach(item => {
+                                                            msg += `• ${item.description} — ${formatCurrency(item.totalAmount)}\n`;
+                                                        });
+                                                    }
                                                     if (pixSettings) {
                                                         msg += `\n*Dados para pagamento PIX:*\n`;
                                                         msg += `Tipo: ${pixSettings.pixKeyType}\n`;
@@ -669,8 +682,14 @@ export default function FinancePage() {
                                                     const desc = inv.contract?.name || inv.notes || null;
                                                     if (desc) msg += `${inv.contract?.name ? 'Contrato' : 'Descrição'}: ${desc}\n`;
                                                     if (inv.referenceMonth) msg += `Ref: ${formatMonth(inv.referenceMonth)}\n`;
+                                                    if (inv.items && inv.items.length > 0) {
+                                                        msg += `\n*Itens:*\n`;
+                                                        inv.items.forEach(item => {
+                                                            msg += `• ${item.description} — ${formatCurrency(item.totalAmount)}\n`;
+                                                        });
+                                                    }
                                                     msg += `\nPagamento confirmado com sucesso!\n`;
-                                                    msg += `Obrigado!\n\n_Enviado pelo sistema Schumaker Flow_`;
+                                                    msg += `Obrigado!\n\n_Enviado pelo sistema SFlow_`;
                                                     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
                                                 }}
                                             >
