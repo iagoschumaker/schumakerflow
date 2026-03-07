@@ -187,11 +187,11 @@ export default function SettingsPage() {
                 )}
 
 
-                {/* Google Drive Connection */}
+                {/* Google Drive + Calendar Connection */}
                 <div className="card" style={{ marginTop: 'var(--space-4)' }}>
                     <div className="card-header">
                         <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                            <HardDrive size={18} /> Google Drive
+                            <HardDrive size={18} /> Google Drive & Calendar
                         </h2>
                     </div>
                     <div style={{ padding: 'var(--space-4)' }}>
@@ -213,7 +213,7 @@ export default function SettingsPage() {
                                 }}>
                                     <CheckCircle2 size={24} style={{ color: '#059669', flexShrink: 0 }} />
                                     <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 600, color: '#059669' }}>Google Drive Conectado</div>
+                                        <div style={{ fontWeight: 600, color: '#059669' }}>Google Drive & Calendar Conectado</div>
                                         <div className="text-sm" style={{ color: '#047857', marginTop: 2 }}>
                                             {driveStatus.email}
                                         </div>
@@ -245,7 +245,7 @@ export default function SettingsPage() {
 
                                 <p className="text-sm text-muted" style={{ marginBottom: 'var(--space-3)' }}>
                                     Os uploads de arquivos serão salvos automaticamente no Google Drive desta conta,
-                                    organizados por projeto.
+                                    organizados por projeto. A Agenda também está sincronizada com o Google Calendar.
                                 </p>
 
                                 <button
@@ -276,17 +276,17 @@ export default function SettingsPage() {
                                     <XCircle size={24} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
                                     <div>
                                         <div style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-                                            Google Drive não conectado
+                                            Google Drive & Calendar não conectado
                                         </div>
                                         <div className="text-sm text-muted" style={{ marginTop: 2 }}>
-                                            Conecte sua conta do Google para armazenar os arquivos automaticamente no Drive.
+                                            Conecte sua conta do Google para armazenar arquivos no Drive e sincronizar a Agenda com o Google Calendar.
                                         </div>
                                     </div>
                                 </div>
 
                                 <p className="text-sm text-muted" style={{ marginBottom: 'var(--space-4)' }}>
                                     Ao conectar, uma pasta raiz será criada no seu Google Drive para organizar todos os
-                                    arquivos dos projetos. Os arquivos enviados serão salvos automaticamente.
+                                    arquivos dos projetos, e a Agenda será sincronizada com o Google Calendar.
                                 </p>
 
                                 <button
@@ -295,7 +295,7 @@ export default function SettingsPage() {
                                     style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}
                                 >
                                     <HardDrive size={16} />
-                                    Conectar Google Drive
+                                    Conectar Google Drive & Calendar
                                 </button>
                             </div>
                         )}

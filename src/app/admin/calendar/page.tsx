@@ -16,11 +16,12 @@ interface CalEvent {
     location: string;
 }
 
-const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const WEEKDAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 const MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
 function getMonthDays(year: number, month: number) {
-    const firstDay = new Date(year, month, 1).getDay();
+    const firstDaySun = new Date(year, month, 1).getDay(); // 0=Sun
+    const firstDay = firstDaySun === 0 ? 6 : firstDaySun - 1; // Convert to Mon=0
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const prevDays = new Date(year, month, 0).getDate();
 
@@ -219,7 +220,7 @@ export default function CalendarPage() {
                 overflow: 'hidden',
             }}>
                 {/* Weekday headers */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid var(--color-border)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', borderBottom: '1px solid var(--color-border)' }}>
                     {WEEKDAYS.map(d => (
                         <div key={d} style={{
                             padding: '10px 0', textAlign: 'center', fontWeight: 700,
@@ -236,7 +237,7 @@ export default function CalendarPage() {
                         Carregando agenda...
                     </div>
                 ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}>
                         {days.map((day, idx) => {
                             const isToday = isSameDay(day.date, today);
                             const dayEvents = getEventsForDay(day.date);
@@ -253,6 +254,7 @@ export default function CalendarPage() {
                                         opacity: day.current ? 1 : 0.35,
                                         background: isToday ? 'color-mix(in srgb, var(--color-primary) 8%, transparent)' : 'transparent',
                                         transition: 'background 0.15s',
+                                        overflow: 'hidden',
                                     }}
                                     onMouseEnter={(e) => { if (!isToday) (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--color-primary) 4%, transparent)'; }}
                                     onMouseLeave={(e) => { if (!isToday) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
