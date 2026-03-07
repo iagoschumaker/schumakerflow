@@ -64,9 +64,8 @@ export default function LoginPage() {
                 <div className="login-split-banner">
                     <img src="/icons/login-banner.png" alt="" className="login-banner-img" />
                     <div className="login-banner-overlay">
-                        <img src="/icons/favicon-512-white.png" alt="SFlow" style={{ width: 80, height: 'auto', marginBottom: 16 }} />
-                        <div style={{ fontSize: '2rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>SFlow</div>
-                        <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>Gestão de Clientes, Mídia, Agenda e Financeiro</div>
+                        <img src="/icons/favicon-512-white.png" alt="SFlow" style={{ width: 120, height: 'auto', marginBottom: 24 }} />
+                        <div style={{ fontSize: '1.1rem', color: 'rgba(255,255,255,0.6)', fontWeight: 400, maxWidth: 280, lineHeight: 1.5 }}>Gestão de Clientes, Mídia, Agenda e Financeiro</div>
                     </div>
                 </div>
 

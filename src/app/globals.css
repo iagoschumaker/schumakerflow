@@ -805,7 +805,9 @@ tbody tr:last-child td {
 }
 
 .login-split-banner {
-  flex: 0 0 50%;
+  flex: 1 1 50%;
+  width: 50%;
+  min-height: 100vh;
   background: #0a0a0f;
   display: flex;
   align-items: center;
@@ -834,7 +836,8 @@ tbody tr:last-child td {
 }
 
 .login-split-form {
-  flex: 0 0 50%;
+  flex: 1 1 50%;
+  width: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
