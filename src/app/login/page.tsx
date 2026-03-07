@@ -89,11 +89,11 @@ export default function LoginPage() {
             <div className="login-card">
                 <div className="login-logo">
                     <div style={{ marginBottom: '0.5rem' }}>
-                        <img src="/icons/favicon-512-black.png" alt="SFlow" className="login-logo-light" style={{ width: 56, height: 56 }} />
-                        <img src="/icons/favicon-512-white.png" alt="SFlow" className="login-logo-dark" style={{ width: 56, height: 56 }} />
+                        <img src="/icons/favicon-512-black.png" alt="SFlow" className="login-logo-light" style={{ width: 64, height: 'auto' }} />
+                        <img src="/icons/favicon-512-white.png" alt="SFlow" className="login-logo-dark" style={{ width: 64, height: 'auto' }} />
                     </div>
                     <h1>SFlow</h1>
-                    <p>Client, Media & Finance Management</p>
+                    <p>Gestão de Clientes, Mídia e Financeiro</p>
                 </div>
 
                 {!showReset ? (

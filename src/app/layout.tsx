@@ -9,7 +9,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "SFlow — Client, Media & Finance Management",
+  title: "SFlow — Gestão de Clientes, Mídia e Financeiro",
   description: "Plataforma profissional para gestão de clientes, mídia e financeiro. Multi-tenant SaaS.",
 };
 
@@ -21,7 +21,8 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
-        <link rel="icon" type="image/png" href="/icons/favicon-512-black.png" />
+        <link rel="icon" type="image/png" sizes="512x512" href="/icons/favicon-512-black.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
