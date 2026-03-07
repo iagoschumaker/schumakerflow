@@ -701,69 +701,106 @@ export default function FinancePage() {
                             <span><strong>{selInvs.length}</strong> fatura(s)</span>
                             <span style={{ color: 'var(--color-text-muted)' }}>|</span>
                             <span style={{ fontWeight: 800, color: 'var(--color-primary)' }}>{formatCurrency(total)}</span>
-                            <button
-                                className="btn btn-sm"
-                                disabled={qrLoading}
-                                style={{ background: '#25D366', border: 'none', color: '#fff', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px' }}
-                                onClick={async () => {
-                                    // Check all selected invoices have same client phone
-                                    const phones = [...new Set(selInvs.map(i => (i.client.phone || '').replace(/\D/g, '')))];
-                                    const phone = phones[0];
-                                    if (!phone) {
-                                        showToast('Cliente(s) sem telefone cadastrado.', 'error');
-                                        return;
-                                    }
-                                    if (clientNames.length > 1) {
-                                        showToast('Selecione faturas do mesmo cliente.', 'error');
-                                        return;
-                                    }
-
-                                    let msg = `*Cobran\u00e7a - ${clientNames[0]}*\n\n`;
-                                    selInvs.forEach((inv, idx) => {
-                                        const label = inv.contract?.name || inv.notes || 'Fatura avulsa';
-                                        msg += `${idx + 1}. ${label} - *${formatCurrency(inv.totalAmount)}*`;
-                                        msg += ` (venc: ${new Date(inv.dueDate).toLocaleDateString('pt-BR')})`;
-                                        if (inv.referenceMonth) msg += ` ref: ${formatMonth(inv.referenceMonth)}`;
-                                        msg += `\n`;
-                                        // Show invoice items if available
-                                        if (inv.items && inv.items.length > 0 && !inv.contract?.name) {
-                                            inv.items.forEach((item: any) => {
-                                                msg += `   • ${item.description} — ${formatCurrency(item.totalAmount)}\n`;
-                                            });
+                            {selInvs.some(i => i.status !== 'PAID') && (
+                                <button
+                                    className="btn btn-sm"
+                                    disabled={qrLoading}
+                                    style={{ background: '#25D366', border: 'none', color: '#fff', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px' }}
+                                    onClick={async () => {
+                                        // Check all selected invoices have same client phone
+                                        const phones = [...new Set(selInvs.map(i => (i.client.phone || '').replace(/\D/g, '')))];
+                                        const phone = phones[0];
+                                        if (!phone) {
+                                            showToast('Cliente(s) sem telefone cadastrado.', 'error');
+                                            return;
                                         }
-                                    });
-                                    msg += `\n*Total: ${formatCurrency(total)}*\n`;
-                                    if (pixSettings) {
-                                        msg += `\n*Dados para pagamento PIX:*\n`;
-                                        msg += `Tipo: ${pixSettings.pixKeyType}\n`;
-                                        msg += `Chave: *${pixSettings.pixKey}*\n`;
-                                        msg += `Nome: ${pixSettings.pixReceiverName}\n`;
-                                    }
-                                    msg += `\nObrigado!\n\n_Enviado pelo sistema Schumaker Flow_`;
+                                        if (clientNames.length > 1) {
+                                            showToast('Selecione faturas do mesmo cliente.', 'error');
+                                            return;
+                                        }
 
-                                    if (pixSettings) {
-                                        setQrLoading(true);
-                                        try {
-                                            const res = await fetch('/api/admin/finance/pix-qr', {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ amount: total, clientName: clientNames[0] }),
-                                            });
-                                            if (res.ok) {
-                                                const d = await res.json();
-                                                setQrModal({ qrDataUrl: d.data.qrDataUrl, payload: d.data.payload, invoices: selInvs, totalAmount: total, msg, phone });
-                                                setQrLoading(false);
-                                                return;
+                                        let msg = `*Cobran\u00e7a - ${clientNames[0]}*\n\n`;
+                                        selInvs.forEach((inv, idx) => {
+                                            const label = inv.contract?.name || inv.notes || 'Fatura avulsa';
+                                            msg += `${idx + 1}. ${label} - *${formatCurrency(inv.totalAmount)}*`;
+                                            msg += ` (venc: ${new Date(inv.dueDate).toLocaleDateString('pt-BR')})`;
+                                            if (inv.referenceMonth) msg += ` ref: ${formatMonth(inv.referenceMonth)}`;
+                                            msg += `\n`;
+                                            // Show invoice items if available
+                                            if (inv.items && inv.items.length > 0 && !inv.contract?.name) {
+                                                inv.items.forEach((item: any) => {
+                                                    msg += `   • ${item.description} — ${formatCurrency(item.totalAmount)}\n`;
+                                                });
                                             }
-                                        } catch { /* fallback */ }
-                                        setQrLoading(false);
-                                    }
-                                    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
-                                }}
-                            >
-                                {qrLoading ? <Loader2 size={14} className="animate-spin" /> : <MessageCircle size={14} />}
-                                Enviar {selInvs.length > 1 ? 'juntas' : ''} via WhatsApp
-                            </button>
+                                        });
+                                        msg += `\n*Total: ${formatCurrency(total)}*\n`;
+                                        if (pixSettings) {
+                                            msg += `\n*Dados para pagamento PIX:*\n`;
+                                            msg += `Tipo: ${pixSettings.pixKeyType}\n`;
+                                            msg += `Chave: *${pixSettings.pixKey}*\n`;
+                                            msg += `Nome: ${pixSettings.pixReceiverName}\n`;
+                                        }
+                                        msg += `\nObrigado!\n\n_Enviado pelo sistema Schumaker Flow_`;
+
+                                        if (pixSettings) {
+                                            setQrLoading(true);
+                                            try {
+                                                const res = await fetch('/api/admin/finance/pix-qr', {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ amount: total, clientName: clientNames[0] }),
+                                                });
+                                                if (res.ok) {
+                                                    const d = await res.json();
+                                                    setQrModal({ qrDataUrl: d.data.qrDataUrl, payload: d.data.payload, invoices: selInvs, totalAmount: total, msg, phone });
+                                                    setQrLoading(false);
+                                                    return;
+                                                }
+                                            } catch { /* fallback */ }
+                                            setQrLoading(false);
+                                        }
+                                        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+                                    }}
+                                >
+                                    {qrLoading ? <Loader2 size={14} className="animate-spin" /> : <MessageCircle size={14} />}
+                                    Enviar {selInvs.length > 1 ? 'juntas' : ''} via WhatsApp
+                                </button>
+                            )}
+                            {selInvs.every(i => i.status === 'PAID') && (
+                                <button
+                                    className="btn btn-sm"
+                                    style={{ background: '#25D366', border: 'none', color: '#fff', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px' }}
+                                    onClick={() => {
+                                        const phones = [...new Set(selInvs.map(i => (i.client.phone || '').replace(/\D/g, '')))];
+                                        const phone = phones[0];
+                                        if (!phone) {
+                                            showToast('Cliente(s) sem telefone cadastrado.', 'error');
+                                            return;
+                                        }
+                                        if (clientNames.length > 1) {
+                                            showToast('Selecione faturas do mesmo cliente.', 'error');
+                                            return;
+                                        }
+
+                                        let msg = `✅ *Comprovante de Pagamento - ${clientNames[0]}*\n\n`;
+                                        selInvs.forEach((inv, idx) => {
+                                            const label = inv.contract?.name || inv.notes || 'Fatura avulsa';
+                                            const paidDate = inv.paidAt ? new Date(inv.paidAt).toLocaleDateString('pt-BR') : '—';
+                                            msg += `${idx + 1}. ${label} - *${formatCurrency(inv.totalAmount)}*`;
+                                            msg += ` (pago em: ${paidDate})`;
+                                            if (inv.referenceMonth) msg += ` ref: ${formatMonth(inv.referenceMonth)}`;
+                                            msg += `\n`;
+                                        });
+                                        msg += `\n*Total Pago: ${formatCurrency(total)}*\n`;
+                                        msg += `\nTodos os pagamentos confirmados com sucesso!\n`;
+                                        msg += `Obrigado!\n\n_Enviado pelo sistema Schumaker Flow_`;
+                                        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+                                    }}
+                                >
+                                    <Check size={14} /> <MessageCircle size={14} />
+                                    Comprovante {selInvs.length > 1 ? `(${selInvs.length})` : ''}
+                                </button>
+                            )}
                             <button
                                 className="btn btn-secondary btn-sm"
                                 style={{ padding: '6px 10px' }}
