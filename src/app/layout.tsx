@@ -21,8 +21,8 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
-        <link rel="icon" type="image/png" href="/icons/favicon-512-black.png" media="(prefers-color-scheme: light)" />
-        <link rel="icon" type="image/png" href="/icons/favicon-512-white.png" media="(prefers-color-scheme: dark)" />
+        <link rel="icon" type="image/png" href="/icons/favicon-black-sq.png" media="(prefers-color-scheme: light)" />
+        <link rel="icon" type="image/png" href="/icons/favicon-white-sq.png" media="(prefers-color-scheme: dark)" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
