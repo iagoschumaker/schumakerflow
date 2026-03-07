@@ -64,7 +64,12 @@ export const GET = withAuth(
 
         // Filter "only new" - files not yet downloaded
         const result = projects.map((project) => ({
-            ...project,
+            id: project.id,
+            name: project.name,
+            status: project.status,
+            createdAt: project.createdAt,
+            client: project.client,
+            _count: project._count,
             files: project.files
                 .filter((f) => {
                     if (onlyNew) {
@@ -72,17 +77,20 @@ export const GET = withAuth(
                     }
                     return true;
                 })
-                .map((f) => ({
-                    id: f.id,
-                    name: f.name,
-                    kind: f.kind,
-                    mimeType: f.mimeType,
-                    driveFileId: f.driveFileId,
-                    publishedAt: f.publishedAt,
-                    sizeBytes: f.sizeBytes?.toString(),
-                    lastDownload: f.downloadEvents[0] || null,
-                    isNew: f.downloadEvents.length === 0,
-                })),
+                .map((f) => {
+                    const lastDl = f.downloadEvents[0] || null;
+                    return {
+                        id: f.id,
+                        name: f.name,
+                        kind: f.kind,
+                        mimeType: f.mimeType,
+                        driveFileId: f.driveFileId,
+                        publishedAt: f.publishedAt,
+                        sizeBytes: f.sizeBytes?.toString() ?? null,
+                        lastDownload: lastDl ? { completedAt: lastDl.completedAt } : null,
+                        isNew: f.downloadEvents.length === 0,
+                    };
+                }),
         }));
 
         return apiSuccess(result);

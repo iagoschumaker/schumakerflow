@@ -427,29 +427,15 @@ export default function PortalProjectsPage() {
                                                                             {/* Expanded: Preview + Download */}
                                                                             {isFileExpanded && (
                                                                                 <div style={{ borderTop: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)' }}>
-                                                                                    {/* Preview */}
+                                                                                    {/* Preview thumbnail */}
                                                                                     {file.driveFileId && !file.driveFileId.startsWith('mock_') && (
-                                                                                        <div style={{ background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                                                            {file.mimeType?.startsWith('video/') ? (
-                                                                                                <iframe
-                                                                                                    src={`https://drive.google.com/file/d/${file.driveFileId}/preview`}
-                                                                                                    style={{ width: '100%', height: 360, border: 'none' }}
-                                                                                                    allow="autoplay; encrypted-media"
-                                                                                                    allowFullScreen
-                                                                                                />
-                                                                                            ) : file.mimeType?.startsWith('image/') ? (
-                                                                                                <img
-                                                                                                    src={`https://lh3.googleusercontent.com/d/${file.driveFileId}`}
-                                                                                                    alt={file.name}
-                                                                                                    style={{ maxWidth: '100%', maxHeight: 300, objectFit: 'contain' }}
-                                                                                                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                                                                                                />
-                                                                                            ) : (
-                                                                                                <iframe
-                                                                                                    src={`https://drive.google.com/file/d/${file.driveFileId}/preview`}
-                                                                                                    style={{ width: '100%', height: 280, border: 'none' }}
-                                                                                                />
-                                                                                            )}
+                                                                                        <div style={{ background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+                                                                                            <img
+                                                                                                src={`https://lh3.googleusercontent.com/d/${file.driveFileId}=w800`}
+                                                                                                alt={file.name}
+                                                                                                style={{ maxWidth: '100%', maxHeight: 300, objectFit: 'contain', borderRadius: 4 }}
+                                                                                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                                                                            />
                                                                                         </div>
                                                                                     )}
 
