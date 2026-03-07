@@ -98,17 +98,22 @@ export default function SelectContextPage() {
     return (
         <div className="login-container">
             <div className="login-card" style={{ maxWidth: 460 }}>
-                <div className="login-logo">
-                    <p style={{ marginTop: 4 }}>Olá, <strong>{userName}</strong></p>
-                </div>
-
-                <div style={{
-                    fontSize: '0.85rem',
-                    color: 'var(--color-text-muted)',
-                    textAlign: 'center',
-                    marginBottom: 'var(--space-5)',
-                }}>
-                    Selecione em qual sessão deseja entrar:
+                <div style={{ textAlign: 'center', marginBottom: 'var(--space-6)' }}>
+                    <div style={{ fontSize: '2rem', marginBottom: 'var(--space-2)' }}>👋</div>
+                    <h1 style={{
+                        fontSize: 'var(--font-size-xl)',
+                        fontWeight: 700,
+                        color: 'var(--color-text)',
+                        marginBottom: 'var(--space-1)',
+                    }}>
+                        Olá, {userName.split(' ')[0]}!
+                    </h1>
+                    <p style={{
+                        fontSize: 'var(--font-size-sm)',
+                        color: 'var(--color-text-muted)',
+                    }}>
+                        Escolha como deseja acessar o sistema
+                    </p>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
