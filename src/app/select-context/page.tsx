@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Zap, Shield, Building2, Users, ChevronRight, LogOut } from 'lucide-react';
+import { Shield, Building2, Users, ChevronRight, LogOut } from 'lucide-react';
 
 interface ContextOption {
     type: 'superadmin' | 'tenant' | 'client';
@@ -99,8 +99,6 @@ export default function SelectContextPage() {
         <div className="login-container">
             <div className="login-card" style={{ maxWidth: 460 }}>
                 <div className="login-logo">
-                    <div style={{ marginBottom: '0.5rem', color: 'var(--color-primary)' }}><Zap size={40} /></div>
-                    <h1>Schumaker Flow</h1>
                     <p style={{ marginTop: 4 }}>Olá, <strong>{userName}</strong></p>
                 </div>
 
@@ -192,7 +190,7 @@ export default function SelectContextPage() {
                 </div>
 
                 <div className="text-center mt-4 text-xs text-muted">
-                    © {new Date().getFullYear()} Schumaker Flow. Todos os direitos reservados.
+                    © {new Date().getFullYear()} SFlow. Todos os direitos reservados.
                 </div>
             </div>
         </div>
