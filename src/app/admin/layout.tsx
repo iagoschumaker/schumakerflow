@@ -106,7 +106,7 @@ export default function AdminLayout({
                         </div>
                         <div className="sidebar-user-info">
                             <div className="sidebar-user-name">{user?.name || 'Carregando...'}</div>
-                            <div className="sidebar-user-role">{user?.role?.replace('_', ' ') || ''}</div>
+                            <div className="sidebar-user-role">{user?.role === 'TENANT_ADMIN' ? 'FLOW ADMIN' : user?.role === 'TENANT_STAFF' ? 'FLOW STAFF' : user?.role === 'SUPERADMIN' ? 'SUPER ADMIN' : user?.role?.replace('_', ' ') || ''}</div>
                         </div>
                         <ThemeToggle />
                         <button
