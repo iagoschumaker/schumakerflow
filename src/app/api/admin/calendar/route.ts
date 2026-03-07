@@ -49,7 +49,7 @@ export const POST = withAuth(
         try {
             const calendar = await getCalendarClient(ctx.tenantId);
             const body = await req.json();
-            const { summary, description, start, end, allDay, calendarId } = body;
+            const { summary, description, start, end, allDay, calendarId, reminders } = body;
 
             if (!summary || !start) {
                 return apiError('Título e data de início são obrigatórios', 400);
@@ -61,12 +61,19 @@ export const POST = withAuth(
             };
 
             if (allDay) {
-                // All-day events use date (YYYY-MM-DD)
                 eventBody.start = { date: start.split('T')[0] };
                 eventBody.end = { date: (end || start).split('T')[0] };
             } else {
                 eventBody.start = { dateTime: start, timeZone: 'America/Sao_Paulo' };
                 eventBody.end = { dateTime: end || start, timeZone: 'America/Sao_Paulo' };
+            }
+
+            // Custom reminders
+            if (reminders && Array.isArray(reminders) && reminders.length > 0) {
+                eventBody.reminders = {
+                    useDefault: false,
+                    overrides: reminders.map((m: number) => ({ method: 'popup', minutes: m })),
+                };
             }
 
             const res = await calendar.events.insert({
@@ -89,7 +96,7 @@ export const PUT = withAuth(
         try {
             const calendar = await getCalendarClient(ctx.tenantId);
             const body = await req.json();
-            const { eventId, summary, description, start, end, allDay, calendarId } = body;
+            const { eventId, summary, description, start, end, allDay, calendarId, reminders } = body;
 
             if (!eventId) {
                 return apiError('eventId é obrigatório', 400);
@@ -107,6 +114,13 @@ export const PUT = withAuth(
                     eventBody.start = { dateTime: start, timeZone: 'America/Sao_Paulo' };
                     eventBody.end = { dateTime: end || start, timeZone: 'America/Sao_Paulo' };
                 }
+            }
+
+            if (reminders && Array.isArray(reminders) && reminders.length > 0) {
+                eventBody.reminders = {
+                    useDefault: false,
+                    overrides: reminders.map((m: number) => ({ method: 'popup', minutes: m })),
+                };
             }
 
             await calendar.events.patch({

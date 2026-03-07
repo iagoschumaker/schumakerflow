@@ -2,7 +2,19 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useToast } from '@/components/Toast';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, X, Trash2, Edit2, Clock, MapPin, Loader2, ExternalLink } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, X, Trash2, Edit2, Clock, MapPin, Loader2, ExternalLink, Bell } from 'lucide-react';
+
+const REMINDER_OPTIONS = [
+    { label: 'Sem lembrete', value: -1 },
+    { label: '5 minutos antes', value: 5 },
+    { label: '10 minutos antes', value: 10 },
+    { label: '15 minutos antes', value: 15 },
+    { label: '30 minutos antes', value: 30 },
+    { label: '1 hora antes', value: 60 },
+    { label: '2 horas antes', value: 120 },
+    { label: '1 dia antes', value: 1440 },
+    { label: '2 dias antes', value: 2880 },
+];
 
 interface CalEvent {
     id: string;
@@ -76,7 +88,7 @@ export default function CalendarPage() {
     const [selectedEvent, setSelectedEvent] = useState<CalEvent | null>(null);
 
     // Form
-    const [form, setForm] = useState({ summary: '', description: '', startDate: '', startTime: '09:00', endDate: '', endTime: '10:00', allDay: false });
+    const [form, setForm] = useState({ summary: '', description: '', startDate: '', startTime: '09:00', endDate: '', endTime: '10:00', allDay: false, reminders: [10] as number[] });
 
     const fetchEvents = useCallback(async () => {
         setLoading(true);
@@ -109,7 +121,7 @@ export default function CalendarPage() {
 
     const openCreate = (date: Date) => {
         const ds = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-        setForm({ summary: '', description: '', startDate: ds, startTime: '09:00', endDate: ds, endTime: '10:00', allDay: false });
+        setForm({ summary: '', description: '', startDate: ds, startTime: '09:00', endDate: ds, endTime: '10:00', allDay: false, reminders: [10] });
         setSelectedDate(date);
         setModal('create');
     };
@@ -124,7 +136,7 @@ export default function CalendarPage() {
         const eDate = (ev.end || ev.start).split('T')[0];
         const sTime = ev.allDay ? '09:00' : formatTime(ev.start);
         const eTime = ev.allDay ? '10:00' : formatTime(ev.end);
-        setForm({ summary: ev.summary, description: ev.description, startDate: sDate, startTime: sTime, endDate: eDate, endTime: eTime, allDay: ev.allDay });
+        setForm({ summary: ev.summary, description: ev.description, startDate: sDate, startTime: sTime, endDate: eDate, endTime: eTime, allDay: ev.allDay, reminders: [10] });
         setSelectedEvent(ev);
         setModal('edit');
     };
@@ -137,6 +149,7 @@ export default function CalendarPage() {
                 summary: form.summary,
                 description: form.description,
                 allDay: form.allDay,
+                reminders: form.reminders.filter(r => r > 0),
             };
             if (form.allDay) {
                 payload.start = form.startDate;
@@ -400,6 +413,51 @@ export default function CalendarPage() {
                                         <label style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: 2, display: 'block' }}>Hora</label>
                                         <input className="input" type="time" value={form.endTime} onChange={e => setForm({ ...form, endTime: e.target.value })} />
                                     </div>
+                                )}
+                            </div>
+
+                            {/* Reminders */}
+                            <div>
+                                <label style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <Bell size={14} /> Lembretes
+                                </label>
+                                {form.reminders.map((rem, i) => (
+                                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                                        <select
+                                            className="input"
+                                            value={rem}
+                                            onChange={e => {
+                                                const newReminders = [...form.reminders];
+                                                newReminders[i] = Number(e.target.value);
+                                                setForm({ ...form, reminders: newReminders });
+                                            }}
+                                            style={{ flex: 1 }}
+                                        >
+                                            {REMINDER_OPTIONS.map(opt => (
+                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                            ))}
+                                        </select>
+                                        {form.reminders.length > 1 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setForm({ ...form, reminders: form.reminders.filter((_, j) => j !== i) })}
+                                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger)', padding: 4 }}
+                                                title="Remover lembrete"
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                                {form.reminders.length < 5 && (
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary btn-sm"
+                                        onClick={() => setForm({ ...form, reminders: [...form.reminders, 30] })}
+                                        style={{ marginTop: 4, fontSize: '0.75rem' }}
+                                    >
+                                        + Adicionar lembrete
+                                    </button>
                                 )}
                             </div>
                         </div>
