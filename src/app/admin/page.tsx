@@ -30,15 +30,13 @@ interface CalEvent {
 
 interface Invoice {
     id: string;
-    amount: number;
+    totalAmount: number;
     dueDate: string;
     status: string;
     referenceMonth: string;
     notes: string;
-    contract: {
-        name: string;
-        client: { name: string };
-    };
+    client: { name: string };
+    contract: { name: string } | null;
 }
 
 function formatTime(dateStr: string) {
@@ -260,7 +258,7 @@ export default function AdminDashboard() {
                                                 <div style={{ flex: 1, minWidth: 0 }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
                                                         <span style={{ fontWeight: 700, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                            {inv.contract?.client?.name || 'Cliente'}
+                                                            {inv.client?.name || 'Cliente'}
                                                         </span>
                                                         <span className={`badge ${isOverdue ? 'badge-danger' : 'badge-warning'}`} style={{ fontSize: '0.6rem', padding: '1px 6px' }}>
                                                             {isOverdue ? 'Atrasada' : 'Pendente'}
@@ -271,7 +269,7 @@ export default function AdminDashboard() {
                                                     </div>
                                                 </div>
                                                 <div style={{ fontWeight: 800, fontSize: '0.9rem', color: isOverdue ? '#ef4444' : '#f59e0b', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                                                    {formatCurrency(inv.amount || 0)}
+                                                    {formatCurrency(inv.totalAmount || 0)}
                                                 </div>
                                             </div>
                                         );
