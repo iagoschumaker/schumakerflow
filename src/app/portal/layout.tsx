@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Home, FolderKanban, DollarSign, Zap, LogOut, Menu, User } from 'lucide-react';
+import { Home, FolderKanban, DollarSign, LogOut, Menu, User } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import { ToastProvider } from '@/components/Toast';
 
@@ -50,7 +50,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
 
                 <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
                     <div className="sidebar-brand">
-                        <h1><Zap size={20} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '6px' }} />Schumaker Flow</h1>
+                        <h1><img src="/icons/favicon-512-white.png" alt="SFlow" style={{ width: 28, height: 'auto', display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />SFlow</h1>
                         <span className="brand-sub">Portal do Cliente</span>
                     </div>
 

@@ -5,6 +5,7 @@ import { FolderKanban, DollarSign, CheckCircle, Sparkles, FileText, Calendar, Lo
 
 interface DashboardData {
     client: { id: string; name: string } | null;
+    userName: string | null;
     recentFiles: Array<{
         id: string;
         name: string;
@@ -59,7 +60,7 @@ export default function PortalDashboard() {
     return (
         <div>
             <div className="page-header">
-                <h1>Bem-vindo, {data?.client?.name || 'Cliente'} 👋</h1>
+                <h1>Bem-vindo, {data?.userName?.split(' ')[0] || data?.client?.name || 'Cliente'} 👋</h1>
                 <p>Acompanhe seus projetos, arquivos e financeiro</p>
             </div>
 

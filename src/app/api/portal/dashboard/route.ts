@@ -66,6 +66,7 @@ export const GET = withAuth(
 
         return apiSuccess({
             client,
+            userName: ctx.session.name,
             recentFiles: recentFiles.map((f) => ({
                 ...f,
                 sizeBytes: f.sizeBytes?.toString(),

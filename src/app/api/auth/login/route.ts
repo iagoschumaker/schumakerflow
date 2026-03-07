@@ -139,8 +139,8 @@ export async function POST(request: NextRequest) {
             if (match) selectedContext = match;
         }
 
-        // If multiple contexts and none was explicitly picked, return contexts for selection
-        if (contexts.length > 1 && !context && !tenantSlug) {
+        // Always show context selection page if no explicit context was picked
+        if (!context && !tenantSlug) {
             return NextResponse.json({
                 data: {
                     requireContext: true,

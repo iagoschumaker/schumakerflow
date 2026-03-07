@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Shield, Building2, Users, ChevronRight, LogOut } from 'lucide-react';
+import { Shield, Building2, Users, ChevronRight, LogOut, Lock, Loader2, Eye, EyeOff, ChevronDown } from 'lucide-react';
 
 interface ContextOption {
     type: 'superadmin' | 'tenant' | 'client';
@@ -20,6 +20,13 @@ export default function SelectContextPage() {
     const [userName, setUserName] = useState('');
     const [userEmail, setUserEmail] = useState('');
     const [loading, setLoading] = useState<string | null>(null);
+    const [showPw, setShowPw] = useState(false);
+    const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    const [pwSaving, setPwSaving] = useState(false);
+    const [pwMessage, setPwMessage] = useState('');
+    const [pwError, setPwError] = useState('');
+    const [showCurrent, setShowCurrent] = useState(false);
+    const [showNew, setShowNew] = useState(false);
 
     useEffect(() => {
         const stored = sessionStorage.getItem('login_contexts');
@@ -69,6 +76,55 @@ export default function SelectContextPage() {
         sessionStorage.removeItem('login_contexts');
         sessionStorage.removeItem('login_password');
         router.push('/login');
+    };
+
+    const handleChangePassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setPwMessage('');
+        setPwError('');
+        if (pwForm.newPassword !== pwForm.confirmPassword) {
+            setPwError('As senhas não coincidem');
+            return;
+        }
+        setPwSaving(true);
+        try {
+            // First login to get a session, then change password
+            const loginRes = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: userEmail,
+                    password: pwForm.currentPassword,
+                    context: contexts[0] ? { type: contexts[0].type, tenantId: contexts[0].tenantId, clientId: contexts[0].clientId } : undefined,
+                }),
+            });
+            if (!loginRes.ok) {
+                setPwError('Senha atual incorreta');
+                setPwSaving(false);
+                return;
+            }
+
+            const res = await fetch('/api/auth/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setPwMessage('Senha alterada com sucesso!');
+                setPwForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                // Update stored password
+                sessionStorage.setItem('login_password', pwForm.newPassword);
+                // Logout so session is clean
+                await fetch('/api/auth/logout', { method: 'POST' });
+            } else {
+                setPwError(data.error || 'Erro ao alterar senha');
+            }
+        } catch {
+            setPwError('Erro de conexão');
+        } finally {
+            setPwSaving(false);
+        }
     };
 
     const getIcon = (type: string) => {
@@ -173,6 +229,68 @@ export default function SelectContextPage() {
                             </button>
                         );
                     })}
+                </div>
+
+                {/* Minha Conta - Collapsible password change */}
+                <div style={{ marginTop: 'var(--space-5)' }}>
+                    <button
+                        onClick={() => setShowPw(!showPw)}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.4rem',
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--color-text-muted)',
+                            cursor: 'pointer',
+                            fontSize: 'var(--font-size-sm)',
+                            fontFamily: 'var(--font-family)',
+                            width: '100%',
+                            padding: 'var(--space-2)',
+                        }}
+                    >
+                        <Lock size={14} /> Alterar Senha
+                        <ChevronDown size={14} style={{ transform: showPw ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
+                    </button>
+
+                    {showPw && (
+                        <form onSubmit={handleChangePassword} style={{
+                            marginTop: 'var(--space-3)',
+                            padding: 'var(--space-4)',
+                            borderRadius: 'var(--radius-lg)',
+                            border: '1px solid var(--color-border)',
+                            background: 'var(--color-surface)',
+                        }}>
+                            <div style={{ marginBottom: 'var(--space-3)' }}>
+                                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text-muted)', display: 'block', marginBottom: 4 }}>Senha Atual</label>
+                                <div style={{ position: 'relative' }}>
+                                    <input className="form-input" type={showCurrent ? 'text' : 'password'} value={pwForm.currentPassword} onChange={e => setPwForm({ ...pwForm, currentPassword: e.target.value })} required style={{ paddingRight: 36, fontSize: '0.85rem' }} />
+                                    <button type="button" onClick={() => setShowCurrent(!showCurrent)} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', color: 'var(--color-text-muted)' }}>
+                                        {showCurrent ? <EyeOff size={14} /> : <Eye size={14} />}
+                                    </button>
+                                </div>
+                            </div>
+                            <div style={{ marginBottom: 'var(--space-3)' }}>
+                                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text-muted)', display: 'block', marginBottom: 4 }}>Nova Senha</label>
+                                <div style={{ position: 'relative' }}>
+                                    <input className="form-input" type={showNew ? 'text' : 'password'} value={pwForm.newPassword} onChange={e => setPwForm({ ...pwForm, newPassword: e.target.value })} required minLength={8} placeholder="Mínimo 8 caracteres" style={{ paddingRight: 36, fontSize: '0.85rem' }} />
+                                    <button type="button" onClick={() => setShowNew(!showNew)} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', color: 'var(--color-text-muted)' }}>
+                                        {showNew ? <EyeOff size={14} /> : <Eye size={14} />}
+                                    </button>
+                                </div>
+                            </div>
+                            <div style={{ marginBottom: 'var(--space-3)' }}>
+                                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text-muted)', display: 'block', marginBottom: 4 }}>Confirmar Nova Senha</label>
+                                <input className="form-input" type="password" value={pwForm.confirmPassword} onChange={e => setPwForm({ ...pwForm, confirmPassword: e.target.value })} required minLength={8} style={{ fontSize: '0.85rem' }} />
+                            </div>
+                            {pwError && <div style={{ fontSize: '0.78rem', color: '#ef4444', marginBottom: 8 }}>{pwError}</div>}
+                            {pwMessage && <div style={{ fontSize: '0.78rem', color: '#22c55e', marginBottom: 8 }}>{pwMessage}</div>}
+                            <button type="submit" className="btn btn-primary" disabled={pwSaving} style={{ width: '100%', fontSize: '0.85rem' }}>
+                                {pwSaving ? <><Loader2 size={14} className="animate-spin" style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Salvando...</> : 'Alterar Senha'}
+                            </button>
+                        </form>
+                    )}
                 </div>
 
                 <div className="text-center mt-6">

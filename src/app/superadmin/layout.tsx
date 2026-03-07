@@ -85,7 +85,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                                 onClick={async (e) => {
                                     e.preventDefault();
                                     await fetch('/api/auth/logout', { method: 'POST' });
-                                    router.push('/login');
+                                    router.push('/login?returnTo=select-context');
                                 }}
                             >
                                 <span className="icon"><ArrowLeftRight size={18} /></span>
