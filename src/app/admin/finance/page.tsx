@@ -5,7 +5,8 @@ import { useToast } from '@/components/Toast';
 import {
     FileText, ClipboardList, CreditCard, Search, X, Plus,
     Loader2, DollarSign, Receipt, Pencil, Trash2, Check, Ban,
-    Calendar, ArrowRight, User, MessageCircle, QrCode, Copy
+    Calendar, ArrowRight, User, MessageCircle, QrCode, Copy,
+    ChevronLeft, ChevronRight
 } from 'lucide-react';
 import FloatingActionButton from '@/components/FloatingActionButton';
 
@@ -55,6 +56,38 @@ export default function FinancePage() {
     const [qrModal, setQrModal] = useState<{ qrDataUrl: string; payload: string; invoices: Invoice[]; totalAmount: number; msg: string; phone: string } | null>(null);
     const [qrLoading, setQrLoading] = useState(false);
     const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set());
+
+    // Month navigation
+    const now = new Date();
+    const [selectedMonth, setSelectedMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+    const monthScrollRef = useRef<HTMLDivElement>(null);
+
+    const navigateMonth = (dir: number) => {
+        const [y, m] = selectedMonth.split('-').map(Number);
+        const d = new Date(y, m - 1 + dir, 1);
+        setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    };
+
+    const getMonthLabel = (ym: string) => {
+        const [y, m] = ym.split('-').map(Number);
+        const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+        return `${months[m - 1]} ${y}`;
+    };
+
+    const isCurrentMonth = (ym: string) => {
+        const today = new Date();
+        return ym === `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    };
+
+    // Touch swipe support for month nav
+    const touchStart = useRef<number | null>(null);
+    const handleTouchStart = (e: React.TouchEvent) => { touchStart.current = e.touches[0].clientX; };
+    const handleTouchEnd = (e: React.TouchEvent) => {
+        if (touchStart.current === null) return;
+        const diff = e.changedTouches[0].clientX - touchStart.current;
+        if (Math.abs(diff) > 50) navigateMonth(diff > 0 ? -1 : 1);
+        touchStart.current = null;
+    };
 
     // Sub-tab filters
     const [invoiceFilter, setInvoiceFilter] = useState<'ALL' | 'PENDING' | 'PAID' | 'OVERDUE' | 'CANCELLED'>('ALL');
@@ -269,7 +302,14 @@ export default function FinancePage() {
     const invoiceTotal = invoiceForm.items.reduce((s, i) => s + (parseInt(i.quantity) || 0) * (parseFloat(i.unitPrice) || 0), 0);
 
     // ==== Filters ====
-    const filteredInvoices = invoices
+    // Filter invoices by selected month (based on dueDate)
+    const monthInvoices = invoices.filter(inv => {
+        const d = new Date(inv.dueDate);
+        const invMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        return invMonth === selectedMonth;
+    });
+
+    const filteredInvoices = monthInvoices
         .filter(inv => invoiceFilter === 'ALL' || inv.status === invoiceFilter)
         .filter(inv => inv.client.name.toLowerCase().includes(search.toLowerCase()) || (inv.referenceMonth && inv.referenceMonth.includes(search)));
 
@@ -277,10 +317,10 @@ export default function FinancePage() {
         .filter(c => contractFilter === 'ALL' || c.status === contractFilter)
         .filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || c.client.name.toLowerCase().includes(search.toLowerCase()));
 
-    // Stats
-    const totalPending = invoices.filter(i => i.status === 'PENDING').reduce((s, i) => s + Number(i.totalAmount), 0);
-    const totalPaid = invoices.filter(i => i.status === 'PAID').reduce((s, i) => s + Number(i.totalAmount), 0);
-    const totalOverdue = invoices.filter(i => i.status === 'OVERDUE').reduce((s, i) => s + Number(i.totalAmount), 0);
+    // Stats (based on selected month)
+    const totalPending = monthInvoices.filter(i => i.status === 'PENDING').reduce((s, i) => s + Number(i.totalAmount), 0);
+    const totalPaid = monthInvoices.filter(i => i.status === 'PAID').reduce((s, i) => s + Number(i.totalAmount), 0);
+    const totalOverdue = monthInvoices.filter(i => i.status === 'OVERDUE').reduce((s, i) => s + Number(i.totalAmount), 0);
     const activeContracts = contracts.filter(c => c.status === 'ACTIVE').length;
 
     // Client picker
@@ -334,6 +374,12 @@ export default function FinancePage() {
                 .finance-page .item-card .card-info { flex: 1; min-width: 0; }
                 .finance-page .item-card .card-bar { width: 4px; align-self: stretch; border-radius: 4px; flex-shrink: 0; }
                 .finance-page .item-card .card-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+                .finance-page .month-nav { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 20px; user-select: none; -webkit-user-select: none; }
+                .finance-page .month-nav button { background: none; border: 1px solid var(--color-border); border-radius: 50%; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--color-text-muted); transition: all 0.2s; flex-shrink: 0; }
+                .finance-page .month-nav button:hover { background: var(--color-bg-secondary); color: var(--color-primary); border-color: var(--color-primary); }
+                .finance-page .month-nav .month-label { font-size: 1rem; font-weight: 700; color: var(--color-text); min-width: 180px; text-align: center; }
+                .finance-page .month-nav .month-today { font-size: 0.7rem; color: var(--color-primary); cursor: pointer; font-weight: 600; padding: 2px 10px; border-radius: 10px; background: rgba(99,102,241,0.1); border: none; transition: all 0.2s; }
+                .finance-page .month-nav .month-today:hover { background: rgba(99,102,241,0.2); }
                 @media (max-width: 600px) {
                     .finance-page .stat-grid { grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
                     .finance-page .main-tabs { border-bottom: none; gap: 4px; }
@@ -347,6 +393,7 @@ export default function FinancePage() {
                     .finance-page .item-card .card-actions { position: absolute; bottom: 10px; right: 14px; }
                     .finance-page .item-card .card-actions .btn { padding: 3px 6px !important; }
                     .finance-page .item-card .card-actions .btn svg { width: 11px; height: 11px; }
+                    .finance-page .month-nav .month-label { font-size: 0.92rem; min-width: 150px; }
                 }
             `}</style>
             <div className="page-header">
@@ -355,6 +402,16 @@ export default function FinancePage() {
             </div>
 
             <div className="page-content">
+                {/* ==== MONTH NAVIGATION ==== */}
+                <div className="month-nav" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+                    <button onClick={() => navigateMonth(-1)} title="Mês anterior"><ChevronLeft size={18} /></button>
+                    <span className="month-label">{getMonthLabel(selectedMonth)}</span>
+                    <button onClick={() => navigateMonth(1)} title="Próximo mês"><ChevronRight size={18} /></button>
+                    {!isCurrentMonth(selectedMonth) && (
+                        <button className="month-today" onClick={() => { const t = new Date(); setSelectedMonth(`${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}`); }}>Hoje</button>
+                    )}
+                </div>
+
                 {/* ==== SUMMARY CARDS ==== */}
                 <div className="stat-grid">
                     {[

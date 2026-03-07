@@ -39,6 +39,11 @@ async function autoCreateNextInvoice(tenantId: string, contractId: string, after
     const billingDay = contract.billingDay || 5;
     const dueDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), Math.min(billingDay, 28), 12, 0, 0);
 
+    // Auto-detect overdue: if dueDate is strictly before today
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const invoiceStatus = dueDate < startOfToday ? 'OVERDUE' : 'PENDING';
+
     const typeLabel = { MONTHLY: 'Mensalidade', PER_VIDEO: 'Por Arquivo', PER_PROJECT: 'Por Projeto', ONE_OFF: 'Avulso' }[contract.type as string] || contract.type;
     const itemType = { MONTHLY: 'MONTHLY_FEE', PER_VIDEO: 'VIDEO', PER_PROJECT: 'PROJECT', ONE_OFF: 'ONE_OFF' }[contract.type as string] || 'ONE_OFF';
 
@@ -49,7 +54,7 @@ async function autoCreateNextInvoice(tenantId: string, contractId: string, after
             contractId: contract.id,
             dueDate,
             totalAmount: amount,
-            status: 'PENDING',
+            status: invoiceStatus,
             referenceMonth: targetMonth,
             idempotencyKey: `auto_${contract.id}_${targetMonth}`,
             items: {
@@ -242,14 +247,20 @@ export const POST = withAuth(
                 }
             }
 
+            // Auto-detect overdue: if dueDate is strictly before today
+            const invoiceDueDate = new Date(parsed.data.dueDate + 'T12:00:00');
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+            const invoiceStatus = invoiceDueDate < todayStart ? 'OVERDUE' : 'PENDING';
+
             const invoice = await prisma.invoice.create({
                 data: {
                     tenantId: ctx.tenantId,
                     clientId: parsed.data.clientId,
                     contractId: parsed.data.contractId,
-                    dueDate: new Date(parsed.data.dueDate + 'T12:00:00'),
+                    dueDate: invoiceDueDate,
                     totalAmount,
-                    status: 'PENDING',
+                    status: invoiceStatus,
                     pixPayload,
                     pixQrCode,
                     externalReference,

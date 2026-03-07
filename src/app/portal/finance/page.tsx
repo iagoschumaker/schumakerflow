@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
     DollarSign, AlertTriangle, CreditCard, CheckCircle, Copy,
-    Calendar, FileText, Ban, Loader2, Receipt
+    Calendar, FileText, Ban, Loader2, Receipt, ChevronLeft, ChevronRight
 } from 'lucide-react';
 
 interface InvoiceItem {
@@ -57,7 +57,41 @@ export default function PortalFinancePage() {
         setTimeout(() => setCopiedPix(null), 3000);
     };
 
-    const invoices = data?.invoices || [];
+    // Month navigation
+    const nowP = new Date();
+    const [selectedMonth, setSelectedMonth] = useState(`${nowP.getFullYear()}-${String(nowP.getMonth() + 1).padStart(2, '0')}`);
+    const touchStartP = useRef<number | null>(null);
+
+    const navigateMonth = (dir: number) => {
+        const [y, m] = selectedMonth.split('-').map(Number);
+        const d = new Date(y, m - 1 + dir, 1);
+        setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    };
+
+    const getMonthLabel = (ym: string) => {
+        const [y, m] = ym.split('-').map(Number);
+        const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+        return `${months[m - 1]} ${y}`;
+    };
+
+    const isCurrentMonth = (ym: string) => {
+        const today = new Date();
+        return ym === `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    };
+
+    const handleTouchStart = (e: React.TouchEvent) => { touchStartP.current = e.touches[0].clientX; };
+    const handleTouchEnd = (e: React.TouchEvent) => {
+        if (touchStartP.current === null) return;
+        const diff = e.changedTouches[0].clientX - touchStartP.current;
+        if (Math.abs(diff) > 50) navigateMonth(diff > 0 ? -1 : 1);
+        touchStartP.current = null;
+    };
+
+    const invoices = (data?.invoices || []).filter(inv => {
+        const d = new Date(inv.dueDate);
+        const invMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        return invMonth === selectedMonth;
+    });
     const totalPending = invoices.filter(i => i.status === 'PENDING').reduce((s, i) => s + Number(i.totalAmount), 0);
     const totalPaid = invoices.filter(i => i.status === 'PAID').reduce((s, i) => s + Number(i.totalAmount), 0);
     const totalOverdue = invoices.filter(i => i.status === 'OVERDUE').reduce((s, i) => s + Number(i.totalAmount), 0);
@@ -84,11 +118,18 @@ export default function PortalFinancePage() {
                 .portal-finance .item-card .card-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
                 .portal-finance .item-card .card-info { flex: 1; min-width: 0; }
                 .portal-finance .item-card .card-value { text-align: right; flex-shrink: 0; }
+                .portal-finance .month-nav { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 20px; user-select: none; -webkit-user-select: none; }
+                .portal-finance .month-nav button { background: none; border: 1px solid var(--color-border); border-radius: 50%; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--color-text-muted); transition: all 0.2s; flex-shrink: 0; }
+                .portal-finance .month-nav button:hover { background: var(--color-bg-secondary); color: var(--color-primary); border-color: var(--color-primary); }
+                .portal-finance .month-nav .month-label { font-size: 1rem; font-weight: 700; color: var(--color-text); min-width: 180px; text-align: center; }
+                .portal-finance .month-nav .month-today { font-size: 0.7rem; color: var(--color-primary); cursor: pointer; font-weight: 600; padding: 2px 10px; border-radius: 10px; background: rgba(99,102,241,0.1); border: none; transition: all 0.2s; }
+                .portal-finance .month-nav .month-today:hover { background: rgba(99,102,241,0.2); }
                 @media (max-width: 600px) {
                     .portal-finance .stat-grid { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
                     .portal-finance .item-card { position: relative; padding-right: 90px; }
                     .portal-finance .item-card .card-value { position: absolute; top: 14px; right: 14px; }
                     .portal-finance .item-card .card-icon { width: 30px; height: 30px; }
+                    .portal-finance .month-nav .month-label { font-size: 0.92rem; min-width: 150px; }
                 }
             `}</style>
 
@@ -98,6 +139,15 @@ export default function PortalFinancePage() {
             </div>
 
             <div className="page-content">
+                {/* ==== MONTH NAVIGATION ==== */}
+                <div className="month-nav" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+                    <button onClick={() => navigateMonth(-1)} title="Mês anterior"><ChevronLeft size={18} /></button>
+                    <span className="month-label">{getMonthLabel(selectedMonth)}</span>
+                    <button onClick={() => navigateMonth(1)} title="Próximo mês"><ChevronRight size={18} /></button>
+                    {!isCurrentMonth(selectedMonth) && (
+                        <button className="month-today" onClick={() => { const t = new Date(); setSelectedMonth(`${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}`); }}>Hoje</button>
+                    )}
+                </div>
                 {/* Block Warning */}
                 {data?.isBlocked && (
                     <div className="card" style={{
