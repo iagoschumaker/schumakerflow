@@ -186,31 +186,17 @@ export default function SettingsPage() {
                     </div>
                 )}
 
-                {/* Tenant Info */}
+                {/* Flow Info */}
                 <div className="card">
                     <div className="card-header">
                         <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                            <Settings size={18} /> Informações do Tenant
+                            <Settings size={18} /> Informações do Flow
                         </h2>
                     </div>
                     <div style={{ padding: 'var(--space-4)' }}>
-                        <div className="grid-2" style={{ gap: 'var(--space-6)' }}>
-                            <div>
-                                <div className="text-sm text-muted" style={{ marginBottom: '4px' }}>Nome</div>
-                                <div className="font-semibold">{tenant?.name || '—'}</div>
-                            </div>
-                            <div>
-                                <div className="text-sm text-muted" style={{ marginBottom: '4px' }}>Slug</div>
-                                <div className="font-semibold">{tenant?.slug || '—'}</div>
-                            </div>
-                            <div>
-                                <div className="text-sm text-muted" style={{ marginBottom: '4px' }}>Subdomínio</div>
-                                <div className="font-semibold">{tenant?.subdomain || '—'}</div>
-                            </div>
-                            <div>
-                                <div className="text-sm text-muted" style={{ marginBottom: '4px' }}>Status</div>
-                                <span className="badge badge-success">{tenant?.status}</span>
-                            </div>
+                        <div>
+                            <div className="text-sm text-muted" style={{ marginBottom: '4px' }}>Nome</div>
+                            <div className="font-semibold">{tenant?.name || '—'}</div>
                         </div>
                     </div>
                 </div>
