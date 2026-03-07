@@ -89,7 +89,7 @@ export default function LoginPage() {
             <div className="login-card">
                 <div className="login-logo">
                     <div style={{ marginBottom: '0.5rem', color: 'var(--color-primary)' }}><Zap size={40} /></div>
-                    <h1>Schumaker Flow</h1>
+                    <h1>SFlow</h1>
                     <p>Client, Media & Finance Management</p>
                 </div>
 
@@ -195,7 +195,7 @@ export default function LoginPage() {
                             className="btn btn-primary btn-lg w-full"
                             style={{ background: '#25D366', borderColor: '#25D366', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
                             onClick={() => {
-                                const msg = encodeURIComponent(`Olá, preciso redefinir minha senha no Schumaker Flow. Meu email: ${resetEmail || '(informe seu email)'}`);
+                                const msg = encodeURIComponent(`Olá, preciso redefinir minha senha no SFlow. Meu email: ${resetEmail || '(informe seu email)'}`);
                                 window.open(`https://wa.me/5517997635564?text=${msg}`, '_blank');
                             }}
                         >
@@ -223,7 +223,7 @@ export default function LoginPage() {
                 )}
 
                 <div className="text-center mt-6 text-xs text-muted">
-                    © {new Date().getFullYear()} Schumaker Flow. Todos os direitos reservados.
+                    © {new Date().getFullYear()} SFlow. Todos os direitos reservados.
                 </div>
             </div>
         </div>

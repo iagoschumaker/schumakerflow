@@ -56,7 +56,7 @@ export default function RegisterPage() {
             <div className="login-card">
                 <div className="login-logo">
                     <div style={{ marginBottom: '0.5rem', color: 'var(--color-primary)' }}><Zap size={40} /></div>
-                    <h1>Schumaker Flow</h1>
+                    <h1>SFlow</h1>
                     <p>Crie sua conta</p>
                 </div>
 
@@ -195,7 +195,7 @@ export default function RegisterPage() {
                 </form>
 
                 <div className="text-center mt-6 text-xs text-muted">
-                    © {new Date().getFullYear()} Schumaker Flow. Todos os direitos reservados.
+                    © {new Date().getFullYear()} SFlow. Todos os direitos reservados.
                 </div>
             </div>
         </div>

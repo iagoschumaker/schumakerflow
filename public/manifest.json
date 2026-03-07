@@ -1,6 +1,6 @@
 {
     "name": "Schumaker Flow",
-    "short_name": "Flow",
+    "short_name": "SFlow",
     "description": "Gestão de clientes, mídia e financeiro",
     "start_url": "/admin",
     "display": "standalone",

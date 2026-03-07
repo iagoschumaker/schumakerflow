@@ -9,7 +9,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Schumaker Flow — Client, Media & Finance Management",
+  title: "SFlow — Client, Media & Finance Management",
   description: "Plataforma profissional para gestão de clientes, mídia e financeiro. Multi-tenant SaaS.",
 };
 
@@ -25,7 +25,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="Schumaker Flow" />
+        <meta name="apple-mobile-web-app-title" content="SFlow" />
       </head>
       <body>
         <script dangerouslySetInnerHTML={{

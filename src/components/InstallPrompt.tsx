@@ -105,12 +105,12 @@ export default function InstallPrompt() {
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                     <img
                         src="/icons/icon-192.png"
-                        alt="Schumaker Flow"
+                        alt="SFlow"
                         style={{ width: 48, height: 48, borderRadius: 12, flexShrink: 0 }}
                     />
                     <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: 2 }}>
-                            Instalar Schumaker Flow
+                            Instalar SFlow
                         </div>
                         <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
                             {isIOS

@@ -58,7 +58,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                 <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
                     <div className="sidebar-brand">
                         <h1><Shield size={20} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '6px' }} />SuperAdmin</h1>
-                        <span className="brand-sub">Schumaker Flow</span>
+                        <span className="brand-sub">SFlow</span>
                     </div>
 
                     <nav className="sidebar-nav">
