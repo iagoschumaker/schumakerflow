@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { LayoutDashboard, Users, FolderKanban, FileText, Download, DollarSign, Settings, Shield, Zap, LogOut, Menu } from 'lucide-react';
+import { LayoutDashboard, Users, FolderKanban, FileText, Download, DollarSign, Calendar, Settings, Shield, Zap, LogOut, Menu } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import { ToastProvider } from '@/components/Toast';
 
@@ -21,6 +21,7 @@ const adminMenu = [
     { href: '/admin/files', label: 'Arquivos', icon: <FileText size={18} /> },
     { href: '/admin/downloads', label: 'Downloads', icon: <Download size={18} /> },
     { href: '/admin/finance', label: 'Financeiro', icon: <DollarSign size={18} /> },
+    { href: '/admin/calendar', label: 'Agenda', icon: <Calendar size={18} /> },
     { href: '/admin/settings', label: 'Configurações', icon: <Settings size={18} /> },
 ];
 

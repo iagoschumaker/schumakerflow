@@ -31,6 +31,7 @@ export const GET = withAuth(
                 scope: [
                     'https://www.googleapis.com/auth/drive.file',
                     'https://www.googleapis.com/auth/userinfo.email',
+                    'https://www.googleapis.com/auth/calendar',
                 ],
                 state: ctx.tenantId, // Pass tenantId through OAuth state
             });
