@@ -649,6 +649,34 @@ export default function FinancePage() {
                                                 {qrLoading ? <Loader2 size={13} className="animate-spin" /> : <MessageCircle size={13} />}
                                             </button>
                                         )}
+                                        {inv.status === 'PAID' && (
+                                            <button
+                                                className="btn btn-sm"
+                                                style={{ padding: '5px 8px', background: '#25D366', border: '1px solid #25D366', color: '#fff' }}
+                                                title="Enviar Comprovante via WhatsApp"
+                                                onClick={() => {
+                                                    const phone = (inv.client.phone || '').replace(/\D/g, '');
+                                                    if (!phone) {
+                                                        showToast('Este cliente não tem telefone cadastrado.', 'error');
+                                                        return;
+                                                    }
+                                                    const valor = formatCurrency(inv.totalAmount);
+                                                    const paidDate = inv.paidAt ? new Date(inv.paidAt).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR');
+                                                    let msg = `✅ *Comprovante de Pagamento*\n\n`;
+                                                    msg += `Cliente: *${inv.client.name}*\n`;
+                                                    msg += `Valor: *${valor}*\n`;
+                                                    msg += `Data do Pagamento: *${paidDate}*\n`;
+                                                    const desc = inv.contract?.name || inv.notes || null;
+                                                    if (desc) msg += `${inv.contract?.name ? 'Contrato' : 'Descrição'}: ${desc}\n`;
+                                                    if (inv.referenceMonth) msg += `Ref: ${formatMonth(inv.referenceMonth)}\n`;
+                                                    msg += `\nPagamento confirmado com sucesso!\n`;
+                                                    msg += `Obrigado!\n\n_Enviado pelo sistema Schumaker Flow_`;
+                                                    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+                                                }}
+                                            >
+                                                <Check size={13} /> <MessageCircle size={13} />
+                                            </button>
+                                        )
                                     </div>
                                 </div>
                             ))}
