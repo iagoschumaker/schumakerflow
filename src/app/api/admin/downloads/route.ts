@@ -37,9 +37,19 @@ export const GET = withAuth(
             take: 200,
         });
 
-        // Flatten for frontend compatibility
+        // Flatten for frontend compatibility — avoid BigInt serialization crash
         const result = events.map(e => ({
-            ...e,
+            id: e.id,
+            tenantId: e.tenantId,
+            fileId: e.fileId,
+            clientAccessId: e.clientAccessId,
+            status: e.status,
+            ip: e.ip,
+            userAgent: e.userAgent,
+            bytesSent: e.bytesSent ? String(e.bytesSent) : null,
+            startedAt: e.startedAt,
+            completedAt: e.completedAt,
+            file: e.file,
             // Provide clientUser-like shape for backward compatibility
             clientUser: e.clientAccess ? {
                 name: e.clientAccess.user.name,
