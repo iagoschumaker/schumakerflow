@@ -309,11 +309,22 @@ export default function FinancePage() {
         return invMonth === selectedMonth;
     });
 
+    // Filter contracts by selected month (active during that month)
+    const [selYear, selMon] = selectedMonth.split('-').map(Number);
+    const monthStart = new Date(selYear, selMon - 1, 1);
+    const monthEnd = new Date(selYear, selMon, 0, 23, 59, 59); // last day of month
+    const monthContracts = contracts.filter(c => {
+        const start = new Date(c.startDate);
+        const end = c.endDate ? new Date(c.endDate) : null;
+        // Contract is relevant if it started before month end AND (no end date OR ended after month start)
+        return start <= monthEnd && (!end || end >= monthStart);
+    });
+
     const filteredInvoices = monthInvoices
         .filter(inv => invoiceFilter === 'ALL' || inv.status === invoiceFilter)
         .filter(inv => inv.client.name.toLowerCase().includes(search.toLowerCase()) || (inv.referenceMonth && inv.referenceMonth.includes(search)));
 
-    const filteredContracts = contracts
+    const filteredContracts = monthContracts
         .filter(c => contractFilter === 'ALL' || c.status === contractFilter)
         .filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || c.client.name.toLowerCase().includes(search.toLowerCase()));
 
@@ -321,7 +332,7 @@ export default function FinancePage() {
     const totalPending = monthInvoices.filter(i => i.status === 'PENDING').reduce((s, i) => s + Number(i.totalAmount), 0);
     const totalPaid = monthInvoices.filter(i => i.status === 'PAID').reduce((s, i) => s + Number(i.totalAmount), 0);
     const totalOverdue = monthInvoices.filter(i => i.status === 'OVERDUE').reduce((s, i) => s + Number(i.totalAmount), 0);
-    const activeContracts = contracts.filter(c => c.status === 'ACTIVE').length;
+    const activeContracts = monthContracts.filter(c => c.status === 'ACTIVE').length;
 
     // Client picker
     const ClientPicker = ({ value, onChange }: { value: string; onChange: (id: string) => void }) => (
@@ -415,10 +426,10 @@ export default function FinancePage() {
                 {/* ==== SUMMARY CARDS ==== */}
                 <div className="stat-grid">
                     {[
-                        { icon: <ClipboardList size={18} />, color: '#6366f1', value: String(activeContracts), label: 'Contratos Ativos', sub: `de ${contracts.length} total` },
-                        { icon: <DollarSign size={18} />, color: '#f59e0b', value: formatCurrency(totalPending), label: 'A Receber', sub: `${invoices.filter(i => i.status === 'PENDING').length} fatura(s)` },
-                        { icon: <CreditCard size={18} />, color: '#22c55e', value: formatCurrency(totalPaid), label: 'Recebido', sub: `${invoices.filter(i => i.status === 'PAID').length} fatura(s)` },
-                        { icon: <Receipt size={18} />, color: totalOverdue > 0 ? '#ef4444' : '#9ca3af', value: formatCurrency(totalOverdue), label: 'Atrasado', sub: `${invoices.filter(i => i.status === 'OVERDUE').length} fatura(s)` },
+                        { icon: <ClipboardList size={18} />, color: '#6366f1', value: String(activeContracts), label: 'Contratos Ativos', sub: `de ${monthContracts.length} total` },
+                        { icon: <DollarSign size={18} />, color: '#f59e0b', value: formatCurrency(totalPending), label: 'A Receber', sub: `${monthInvoices.filter(i => i.status === 'PENDING').length} fatura(s)` },
+                        { icon: <CreditCard size={18} />, color: '#22c55e', value: formatCurrency(totalPaid), label: 'Recebido', sub: `${monthInvoices.filter(i => i.status === 'PAID').length} fatura(s)` },
+                        { icon: <Receipt size={18} />, color: totalOverdue > 0 ? '#ef4444' : '#9ca3af', value: formatCurrency(totalOverdue), label: 'Atrasado', sub: `${monthInvoices.filter(i => i.status === 'OVERDUE').length} fatura(s)` },
                     ].map((c, i) => (
                         <div key={i} className="card" style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, borderLeft: `3px solid ${c.color}` }}>
                             <div style={{ width: 36, height: 36, borderRadius: 10, background: `${c.color}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: c.color, flexShrink: 0 }}>{c.icon}</div>
@@ -434,8 +445,8 @@ export default function FinancePage() {
                 {/* ==== MAIN TABS ==== */}
                 <div className="main-tabs">
                     {([
-                        { key: 'contracts' as const, label: 'Contratos', icon: <ClipboardList size={15} />, count: contracts.length },
-                        { key: 'invoices' as const, label: 'Faturas', icon: <FileText size={15} />, count: invoices.length },
+                        { key: 'contracts' as const, label: 'Contratos', icon: <ClipboardList size={15} />, count: monthContracts.length },
+                        { key: 'invoices' as const, label: 'Faturas', icon: <FileText size={15} />, count: monthInvoices.length },
                     ]).map(t => (
                         <button key={t.key} onClick={() => { setTab(t.key); setSearch(''); }}
                             style={{
@@ -453,18 +464,18 @@ export default function FinancePage() {
                 <div className="filter-bar">
                     {tab === 'invoices' ? (
                         <>
-                            <Pill label="Todas" active={invoiceFilter === 'ALL'} count={invoices.length} onClick={() => setInvoiceFilter('ALL')} />
-                            <Pill label="Pendentes" active={invoiceFilter === 'PENDING'} count={invoices.filter(i => i.status === 'PENDING').length} onClick={() => setInvoiceFilter('PENDING')} />
-                            <Pill label="Pagas" active={invoiceFilter === 'PAID'} count={invoices.filter(i => i.status === 'PAID').length} onClick={() => setInvoiceFilter('PAID')} />
-                            <Pill label="Atrasadas" active={invoiceFilter === 'OVERDUE'} count={invoices.filter(i => i.status === 'OVERDUE').length} onClick={() => setInvoiceFilter('OVERDUE')} />
-                            <Pill label="Canceladas" active={invoiceFilter === 'CANCELLED'} count={invoices.filter(i => i.status === 'CANCELLED').length} onClick={() => setInvoiceFilter('CANCELLED')} />
+                            <Pill label="Todas" active={invoiceFilter === 'ALL'} count={monthInvoices.length} onClick={() => setInvoiceFilter('ALL')} />
+                            <Pill label="Pendentes" active={invoiceFilter === 'PENDING'} count={monthInvoices.filter(i => i.status === 'PENDING').length} onClick={() => setInvoiceFilter('PENDING')} />
+                            <Pill label="Pagas" active={invoiceFilter === 'PAID'} count={monthInvoices.filter(i => i.status === 'PAID').length} onClick={() => setInvoiceFilter('PAID')} />
+                            <Pill label="Atrasadas" active={invoiceFilter === 'OVERDUE'} count={monthInvoices.filter(i => i.status === 'OVERDUE').length} onClick={() => setInvoiceFilter('OVERDUE')} />
+                            <Pill label="Canceladas" active={invoiceFilter === 'CANCELLED'} count={monthInvoices.filter(i => i.status === 'CANCELLED').length} onClick={() => setInvoiceFilter('CANCELLED')} />
                         </>
                     ) : (
                         <>
-                            <Pill label="Todos" active={contractFilter === 'ALL'} count={contracts.length} onClick={() => setContractFilter('ALL')} />
-                            <Pill label="Ativos" active={contractFilter === 'ACTIVE'} count={contracts.filter(c => c.status === 'ACTIVE').length} onClick={() => setContractFilter('ACTIVE')} />
-                            <Pill label="Pausados" active={contractFilter === 'PAUSED'} count={contracts.filter(c => c.status === 'PAUSED').length} onClick={() => setContractFilter('PAUSED')} />
-                            <Pill label="Cancelados" active={contractFilter === 'CANCELLED'} count={contracts.filter(c => c.status === 'CANCELLED').length} onClick={() => setContractFilter('CANCELLED')} />
+                            <Pill label="Todos" active={contractFilter === 'ALL'} count={monthContracts.length} onClick={() => setContractFilter('ALL')} />
+                            <Pill label="Ativos" active={contractFilter === 'ACTIVE'} count={monthContracts.filter(c => c.status === 'ACTIVE').length} onClick={() => setContractFilter('ACTIVE')} />
+                            <Pill label="Pausados" active={contractFilter === 'PAUSED'} count={monthContracts.filter(c => c.status === 'PAUSED').length} onClick={() => setContractFilter('PAUSED')} />
+                            <Pill label="Cancelados" active={contractFilter === 'CANCELLED'} count={monthContracts.filter(c => c.status === 'CANCELLED').length} onClick={() => setContractFilter('CANCELLED')} />
                         </>
                     )}
                     <div className="search-box">
