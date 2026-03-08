@@ -11,6 +11,20 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "Schumaker Flow — Client, Media & Finance Management",
   description: "Plataforma profissional para gestão de clientes, mídia e financeiro. Multi-tenant SaaS.",
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/icon-192.png",
+  },
+  themeColor: "#6366f1",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Schumaker Flow",
+  },
 };
 
 export default function RootLayout({

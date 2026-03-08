@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { X, FileText, Loader2, Upload, Film, Image, FileSpreadsheet, File, CheckCircle2 } from 'lucide-react';
+import { X, FileText, Loader2, Upload, Film, Image, FileSpreadsheet, File, CheckCircle2, RefreshCw } from 'lucide-react';
 import SearchableSelect from '@/components/SearchableSelect';
 
 interface Project { id: string; name: string; client: { name: string } }
@@ -22,7 +22,25 @@ export default function FilesPage() {
     const [uploadFiles, setUploadFiles] = useState<UploadItem[]>([]);
     const [uploading, setUploading] = useState(false);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const [syncing, setSyncing] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleSync = async () => {
+        setSyncing(true);
+        try {
+            const res = await fetch('/api/admin/files/sync', { method: 'POST' });
+            const data = await res.json();
+            if (res.ok) {
+                alert(`${data.data?.message || 'Sincronização concluída!'}`);
+                window.location.reload();
+            } else {
+                alert(data.error || 'Erro na sincronização');
+            }
+        } catch {
+            alert('Falha na conexão');
+        }
+        setSyncing(false);
+    };
 
     useEffect(() => {
         fetch('/api/admin/projects').then(r => r.json()).then(d => {
@@ -166,6 +184,10 @@ export default function FilesPage() {
                     <h1>Upload de Arquivos</h1>
                     <p>Envie arquivos para os projetos</p>
                 </div>
+                <button className="btn btn-secondary" onClick={handleSync} disabled={syncing} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
+                    {syncing ? 'Sincronizando...' : 'Sincronizar Drive'}
+                </button>
             </div>
 
             <div className="page-content">
