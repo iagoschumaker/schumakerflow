@@ -282,8 +282,8 @@ export default function FinancePage() {
     const totalOverdue = invoices.filter(i => i.status === 'OVERDUE').reduce((s, i) => s + Number(i.totalAmount), 0);
     const activeContracts = contracts.filter(c => c.status === 'ACTIVE').length;
 
-    // Client picker
-    const ClientPicker = ({ value, onChange }: { value: string; onChange: (id: string) => void }) => (
+    // Client picker render function (NOT a component - avoids re-mount/focus-loss)
+    const renderClientPicker = (value: string, onChange: (id: string) => void) => (
         <div className="form-group" style={{ position: 'relative' }} ref={clientDropdownRef}>
             <label className="form-label">Cliente *</label>
             <input className="form-input" placeholder="Buscar cliente..." autoComplete="off"
@@ -689,7 +689,7 @@ export default function FinancePage() {
                         </div>
                         <form onSubmit={handleCreateContract}>
                             <div className="modal-body">
-                                <ClientPicker value={contractForm.clientId} onChange={id => setContractForm({ ...contractForm, clientId: id })} />
+                                {renderClientPicker(contractForm.clientId, (id: string) => setContractForm({ ...contractForm, clientId: id }))}
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
                                     <div className="form-group">
                                         <label className="form-label">Nome *</label>
@@ -742,7 +742,7 @@ export default function FinancePage() {
                         <form onSubmit={handleCreateInvoice}>
                             <div className="modal-body">
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
-                                    <ClientPicker value={invoiceForm.clientId} onChange={id => setInvoiceForm({ ...invoiceForm, clientId: id })} />
+                                    {renderClientPicker(invoiceForm.clientId, (id: string) => setInvoiceForm({ ...invoiceForm, clientId: id }))}
                                     <div className="form-group"><label className="form-label">Vencimento *</label><input className="form-input" type="date" value={invoiceForm.dueDate} onChange={e => setInvoiceForm({ ...invoiceForm, dueDate: e.target.value })} required /></div>
                                 </div>
                                 <div className="form-group">
