@@ -30,9 +30,9 @@ async function autoCreateNextInvoice(tenantId: string, contractId: string, after
     }
     const targetMonth = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
 
-    // Check idempotency - don't create if one already exists for this month
+    // Check idempotency - don't create if one already exists for this month (any status)
     const existing = await prisma.invoice.findFirst({
-        where: { tenantId, contractId, referenceMonth: targetMonth, status: { in: ['PENDING', 'OVERDUE'] } },
+        where: { tenantId, contractId, referenceMonth: targetMonth },
     });
     if (existing) return existing;
 
@@ -297,6 +297,7 @@ export const POST = withAuth(
                 where: { id: parsed.data.invoiceId, tenantId: ctx.tenantId },
             });
             if (!invoice) return apiError('Invoice not found', 404);
+            if (invoice.status === 'PAID') return apiError('Fatura já está paga', 400);
 
             await prisma.invoice.update({
                 where: { id: parsed.data.invoiceId },
