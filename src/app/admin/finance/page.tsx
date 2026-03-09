@@ -602,10 +602,10 @@ export default function FinancePage() {
                         <div style={{
                             position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
                             background: 'var(--color-surface)', border: '1px solid var(--color-border)',
-                            borderRadius: 'var(--radius-lg)', padding: '10px 20px',
-                            display: 'flex', alignItems: 'center', gap: 16,
+                            borderRadius: 'var(--radius-lg)', padding: '10px 16px',
+                            display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
                             boxShadow: '0 8px 32px rgba(0,0,0,0.18)', zIndex: 50,
-                            fontSize: '0.88rem',
+                            fontSize: '0.85rem', maxWidth: 'calc(100vw - 32px)', width: 'auto',
                         }}>
                             <span><strong>{selInvs.length}</strong> fatura(s)</span>
                             <span style={{ color: 'var(--color-text-muted)' }}>|</span>
