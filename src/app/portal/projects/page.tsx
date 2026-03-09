@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import {
     FolderKanban, Sparkles, CheckCircle, Download, Loader2,
     Film, Image, FileText, FileSpreadsheet, File, Clock, Calendar,
-    ChevronDown, ChevronUp, Search, Filter, X
+    ChevronDown, ChevronUp, Search, Filter, X, Share2
 } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 
@@ -47,6 +47,7 @@ export default function PortalProjectsPage() {
     const [expandedProject, setExpandedProject] = useState<string | null>(null);
     const [expandedFile, setExpandedFile] = useState<string | null>(null);
     const [downloading, setDownloading] = useState<string | null>(null);
+    const [sharing, setSharing] = useState<string | null>(null);
     const [statusFilter, setStatusFilter] = useState('ALL');
     const [searchText, setSearchText] = useState('');
     const [filterPreset, setFilterPreset] = useState<FilterPreset>('all');
@@ -91,6 +92,51 @@ export default function PortalProjectsPage() {
             showToast('Erro ao baixar arquivo', 'error');
         } finally {
             setDownloading(null);
+        }
+    };
+
+    const handleShare = async (file: FileItem) => {
+        setSharing(file.id);
+        try {
+            // Download the file
+            const res = await fetch(`/api/files/${file.id}/stream`);
+            if (!res.ok) {
+                showToast('Erro ao preparar arquivo para compartilhamento', 'error');
+                return;
+            }
+            const blob = await res.blob();
+            const extension = file.name.split('.').pop() || 'jpg';
+            const fileObj = new window.File([blob], file.name, { type: file.mimeType || `image/${extension}` });
+
+            // Try native share with file
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [fileObj] })) {
+                await navigator.share({
+                    files: [fileObj],
+                    title: file.name,
+                });
+                showToast('Arquivo compartilhado!', 'success');
+            } else if (navigator.share) {
+                // Fallback: share without file (link only)
+                await navigator.share({
+                    title: file.name,
+                    text: `Confira: ${file.name}`,
+                });
+            } else {
+                // Desktop fallback: just download
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = file.name;
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('Arquivo baixado! Abra o Instagram e poste manualmente.', 'info');
+            }
+        } catch (err: any) {
+            if (err?.name !== 'AbortError') {
+                showToast('Erro ao compartilhar', 'error');
+            }
+        } finally {
+            setSharing(null);
         }
     };
 
@@ -453,7 +499,7 @@ export default function PortalProjectsPage() {
                                                                                         </div>
                                                                                     )}
 
-                                                                                    {/* Download button */}
+                                                                                    {/* Actions: Download + Share */}
                                                                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', flexWrap: 'wrap', gap: 8 }}>
                                                                                         <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
                                                                                             <Clock size={12} />
@@ -461,18 +507,39 @@ export default function PortalProjectsPage() {
                                                                                             <span>•</span>
                                                                                             {formatSize(file.sizeBytes)}
                                                                                         </div>
-                                                                                        <button
-                                                                                            className="btn btn-primary btn-sm"
-                                                                                            disabled={downloading === file.id}
-                                                                                            onClick={(e) => { e.stopPropagation(); handleDownload(file.id); }}
-                                                                                            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 16px' }}
-                                                                                        >
-                                                                                            {downloading === file.id
-                                                                                                ? <Loader2 size={14} className="animate-spin" />
-                                                                                                : <Download size={14} />
-                                                                                            }
-                                                                                            Baixar
-                                                                                        </button>
+                                                                                        <div style={{ display: 'flex', gap: 8 }}>
+                                                                                            {(file.mimeType?.startsWith('image/') || file.mimeType?.startsWith('video/')) && (
+                                                                                                <button
+                                                                                                    className="btn btn-sm"
+                                                                                                    disabled={sharing === file.id}
+                                                                                                    onClick={(e) => { e.stopPropagation(); handleShare(file); }}
+                                                                                                    style={{
+                                                                                                        display: 'flex', alignItems: 'center', gap: 6, padding: '6px 16px',
+                                                                                                        background: 'linear-gradient(135deg, #833AB4, #C13584, #E1306C)',
+                                                                                                        color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer',
+                                                                                                        fontSize: '0.8rem', fontWeight: 600,
+                                                                                                    }}
+                                                                                                >
+                                                                                                    {sharing === file.id
+                                                                                                        ? <Loader2 size={14} className="animate-spin" />
+                                                                                                        : <Share2 size={14} />
+                                                                                                    }
+                                                                                                    Compartilhar
+                                                                                                </button>
+                                                                                            )}
+                                                                                            <button
+                                                                                                className="btn btn-primary btn-sm"
+                                                                                                disabled={downloading === file.id}
+                                                                                                onClick={(e) => { e.stopPropagation(); handleDownload(file.id); }}
+                                                                                                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 16px' }}
+                                                                                            >
+                                                                                                {downloading === file.id
+                                                                                                    ? <Loader2 size={14} className="animate-spin" />
+                                                                                                    : <Download size={14} />
+                                                                                                }
+                                                                                                Baixar
+                                                                                            </button>
+                                                                                        </div>
                                                                                     </div>
                                                                                 </div>
                                                                             )}

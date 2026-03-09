@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Home, FolderKanban, DollarSign, Zap, LogOut, Menu, User, Instagram } from 'lucide-react';
+import { Home, FolderKanban, DollarSign, Zap, LogOut, Menu, User } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import { ToastProvider } from '@/components/Toast';
 
@@ -16,7 +16,6 @@ interface UserInfo {
 const portalMenu = [
     { href: '/portal', label: 'Início', icon: <Home size={18} /> },
     { href: '/portal/projects', label: 'Projetos', icon: <FolderKanban size={18} /> },
-    { href: '/portal/instagram', label: 'Instagram', icon: <Instagram size={18} /> },
     { href: '/portal/finance', label: 'Financeiro', icon: <DollarSign size={18} /> },
     { href: '/portal/profile', label: 'Meus Dados', icon: <User size={18} /> },
 ];
