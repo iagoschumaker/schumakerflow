@@ -31,13 +31,14 @@ export const GET = withAuth(
             orderBy: { paidAt: 'desc' },
         });
 
-        // Expenses in this month
+        // Expenses PAID in this month (only paid expenses enter cashflow)
         const expenses = await prisma.expense.findMany({
             where: {
                 tenantId: ctx.tenantId,
-                date: { gte: start, lt: end },
+                status: 'PAID',
+                paidAt: { gte: start, lt: end },
             },
-            orderBy: { date: 'desc' },
+            orderBy: { paidAt: 'desc' },
         });
 
         const totalIncome = paidInvoices.reduce((s: number, i) => s + Number(i.totalAmount), 0);

@@ -8,9 +8,11 @@ const updateSchema = z.object({
     amount: z.number().positive().optional(),
     category: z.enum(['SOFTWARE', 'EQUIPMENT', 'MARKETING', 'OFFICE', 'SALARY', 'FREELANCER', 'TAX', 'OTHER']).optional(),
     date: z.string().optional(),
+    dueDate: z.string().optional().nullable(),
     referenceMonth: z.string().optional(),
     notes: z.string().optional(),
     recurring: z.boolean().optional(),
+    status: z.enum(['PENDING', 'PAID', 'OVERDUE', 'CANCELLED']).optional(),
 });
 
 // PUT /api/admin/finance/expenses/[expenseId]
@@ -28,13 +30,32 @@ export const PUT = withAuth(
         });
         if (!existing) return apiError('Despesa não encontrada', 404);
 
-        const data: Record<string, unknown> = { ...parsed.data };
-        if (data.date) {
-            const d = new Date(data.date as string);
+        const data: Record<string, unknown> = {};
+
+        if (parsed.data.description !== undefined) data.description = parsed.data.description;
+        if (parsed.data.amount !== undefined) data.amount = parsed.data.amount;
+        if (parsed.data.category !== undefined) data.category = parsed.data.category;
+        if (parsed.data.notes !== undefined) data.notes = parsed.data.notes || null;
+        if (parsed.data.recurring !== undefined) data.recurring = parsed.data.recurring;
+        if (parsed.data.referenceMonth !== undefined) data.referenceMonth = parsed.data.referenceMonth;
+        if (parsed.data.status !== undefined) {
+            data.status = parsed.data.status;
+            if (parsed.data.status === 'PAID' && !existing.paidAt) {
+                data.paidAt = new Date();
+            }
+            if (parsed.data.status !== 'PAID') {
+                data.paidAt = null;
+            }
+        }
+        if (parsed.data.date !== undefined) {
+            const d = new Date(parsed.data.date);
             data.date = d;
             if (!parsed.data.referenceMonth) {
                 data.referenceMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
             }
+        }
+        if (parsed.data.dueDate !== undefined) {
+            data.dueDate = parsed.data.dueDate ? new Date(parsed.data.dueDate) : null;
         }
 
         const expense = await prisma.expense.update({
@@ -43,6 +64,40 @@ export const PUT = withAuth(
         });
 
         return apiSuccess(expense);
+    },
+    { roles: ['SUPERADMIN', 'TENANT_ADMIN'] }
+);
+
+// PATCH /api/admin/finance/expenses/[expenseId] — mark paid/unpaid
+export const PATCH = withAuth(
+    async (req: NextRequest, ctx: ApiContext) => {
+        const expenseId = req.nextUrl.pathname.split('/').pop()!;
+        const body = await req.json();
+        const { action } = body;
+
+        const existing = await prisma.expense.findFirst({
+            where: { id: expenseId, tenantId: ctx.tenantId },
+        });
+        if (!existing) return apiError('Despesa não encontrada', 404);
+
+        if (action === 'mark_paid') {
+            if (existing.status === 'PAID') return apiError('Despesa já está paga', 400);
+            const expense = await prisma.expense.update({
+                where: { id: expenseId },
+                data: { status: 'PAID', paidAt: new Date() },
+            });
+            return apiSuccess(expense);
+        }
+
+        if (action === 'mark_unpaid') {
+            const expense = await prisma.expense.update({
+                where: { id: expenseId },
+                data: { status: 'PENDING', paidAt: null },
+            });
+            return apiSuccess(expense);
+        }
+
+        return apiError('Ação inválida', 400);
     },
     { roles: ['SUPERADMIN', 'TENANT_ADMIN'] }
 );

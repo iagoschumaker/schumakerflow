@@ -583,6 +583,13 @@ model ShareLink {
 
 // ==================== EXPENSE ====================
 
+enum ExpenseStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
 model Expense {
   id              String          @id @default(uuid())
   tenantId        String
@@ -590,6 +597,9 @@ model Expense {
   amount          Decimal         @db.Decimal(10, 2)
   category        ExpenseCategory @default(OTHER)
   date            DateTime
+  dueDate         DateTime?
+  paidAt          DateTime?
+  status          ExpenseStatus   @default(PENDING)
   referenceMonth  String?         // "2026-03"
   notes           String?
   recurring       Boolean         @default(false)
@@ -601,4 +611,5 @@ model Expense {
   @@index([tenantId])
   @@index([date])
   @@index([referenceMonth])
+  @@index([status])
 }

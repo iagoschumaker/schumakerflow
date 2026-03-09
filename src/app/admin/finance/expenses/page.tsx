@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/Toast';
 import {
-    CreditCard, Search, X, Plus, Loader2, Pencil, Trash2,
-    ChevronLeft, ChevronRight, Calendar
+    CreditCard, Search, X, Loader2, Pencil, Trash2,
+    ChevronLeft, ChevronRight, Calendar, Check, RotateCcw
 } from 'lucide-react';
 import FloatingActionButton from '@/components/FloatingActionButton';
 
@@ -14,6 +14,9 @@ interface Expense {
     amount: string;
     category: string;
     date: string;
+    dueDate: string | null;
+    paidAt: string | null;
+    status: 'PENDING' | 'PAID' | 'OVERDUE' | 'CANCELLED';
     referenceMonth: string | null;
     notes: string | null;
     recurring: boolean;
@@ -30,6 +33,13 @@ const CATEGORIES: Record<string, { label: string; color: string }> = {
     OTHER: { label: 'Outro', color: '#9ca3af' },
 };
 
+const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
+    PENDING: { label: 'Pendente', color: '#f59e0b', bg: '#f59e0b18' },
+    PAID: { label: 'Pago', color: '#22c55e', bg: '#22c55e18' },
+    OVERDUE: { label: 'Atrasada', color: '#ef4444', bg: '#ef444418' },
+    CANCELLED: { label: 'Cancelada', color: '#9ca3af', bg: '#9ca3af18' },
+};
+
 const MONTH_NAMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
 export default function ExpensesPage() {
@@ -40,13 +50,14 @@ export default function ExpensesPage() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [filterCategory, setFilterCategory] = useState('ALL');
+    const [filterStatus, setFilterStatus] = useState<'ALL' | 'PENDING' | 'PAID' | 'OVERDUE' | 'CANCELLED'>('ALL');
 
     // Modal
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState<Expense | null>(null);
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState({
-        description: '', amount: '', category: 'OTHER', date: '', notes: '', recurring: false,
+        description: '', amount: '', category: 'OTHER', date: '', dueDate: '', notes: '', recurring: false,
     });
 
     const monthKey = `${currentMonth.year}-${String(currentMonth.month).padStart(2, '0')}`;
@@ -69,14 +80,17 @@ export default function ExpensesPage() {
     const formatCurrency = (v: number | string) => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 
     const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount), 0);
+    const totalPaid = expenses.filter(e => e.status === 'PAID').reduce((s, e) => s + Number(e.amount), 0);
+    const totalPending = expenses.filter(e => e.status === 'PENDING' || e.status === 'OVERDUE').reduce((s, e) => s + Number(e.amount), 0);
 
     const filtered = expenses
         .filter(e => filterCategory === 'ALL' || e.category === filterCategory)
+        .filter(e => filterStatus === 'ALL' || e.status === filterStatus)
         .filter(e => e.description.toLowerCase().includes(search.toLowerCase()));
 
     const openNew = () => {
         setEditing(null);
-        setForm({ description: '', amount: '', category: 'OTHER', date: new Date().toISOString().slice(0, 10), notes: '', recurring: false });
+        setForm({ description: '', amount: '', category: 'OTHER', date: new Date().toISOString().slice(0, 10), dueDate: '', notes: '', recurring: false });
         setShowModal(true);
     };
 
@@ -85,6 +99,7 @@ export default function ExpensesPage() {
         setForm({
             description: e.description, amount: String(Number(e.amount)),
             category: e.category, date: e.date.slice(0, 10),
+            dueDate: e.dueDate ? e.dueDate.slice(0, 10) : '',
             notes: e.notes || '', recurring: e.recurring,
         });
         setShowModal(true);
@@ -102,6 +117,7 @@ export default function ExpensesPage() {
                 amount: Number(form.amount),
                 category: form.category,
                 date: form.date,
+                dueDate: form.dueDate || null,
                 notes: form.notes || undefined,
                 recurring: form.recurring,
             };
@@ -121,10 +137,34 @@ export default function ExpensesPage() {
     };
 
     const handleDelete = async (id: string) => {
-        const ok = await showConfirm({ title: 'Excluir Despesa', message: 'Excluir permanentemente?', confirmText: 'Excluir', variant: 'danger' });
+        const ok = await showConfirm({ title: 'Excluir Despesa', message: 'Tem certeza que deseja excluir esta despesa?', confirmText: 'Sim, excluir', variant: 'danger' });
         if (!ok) return;
         await fetch(`/api/admin/finance/expenses/${id}`, { method: 'DELETE' });
         showToast('Despesa excluída', 'success');
+        loadExpenses();
+    };
+
+    const handleMarkPaid = async (id: string) => {
+        const ok = await showConfirm({ title: 'Confirmar Pagamento', message: 'Marcar esta despesa como paga?', confirmText: 'Confirmar', variant: 'default' });
+        if (!ok) return;
+        await fetch(`/api/admin/finance/expenses/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'mark_paid' }),
+        });
+        showToast('Despesa marcada como paga!', 'success');
+        loadExpenses();
+    };
+
+    const handleMarkUnpaid = async (id: string) => {
+        const ok = await showConfirm({ title: 'Desfazer Pagamento', message: 'Voltar esta despesa para pendente?', confirmText: 'Sim, desfazer', variant: 'warning' });
+        if (!ok) return;
+        await fetch(`/api/admin/finance/expenses/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'mark_unpaid' }),
+        });
+        showToast('Despesa voltou para pendente', 'success');
         loadExpenses();
     };
 
@@ -162,30 +202,56 @@ export default function ExpensesPage() {
                     <button onClick={nextMonth} className="btn btn-secondary btn-sm" style={{ padding: '6px 10px' }}><ChevronRight size={18} /></button>
                 </div>
 
-                {/* Summary */}
-                <div className="card" style={{ padding: '16px 20px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 14, borderLeft: '4px solid #ef4444' }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 10, background: '#ef444412', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444', flexShrink: 0 }}>
-                        <CreditCard size={20} />
+                {/* Summary cards */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginBottom: 20 }}>
+                    <div className="card" style={{ padding: '14px 18px', borderLeft: '4px solid #ef4444' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600, marginBottom: 2 }}>Total Despesas</div>
+                        <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#ef4444' }}>{formatCurrency(totalExpenses)}</div>
+                        <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>{expenses.length} despesa(s)</div>
                     </div>
-                    <div>
-                        <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#ef4444' }}>{formatCurrency(totalExpenses)}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Total de despesas em {MONTH_NAMES[currentMonth.month - 1]}</div>
+                    <div className="card" style={{ padding: '14px 18px', borderLeft: '4px solid #22c55e' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600, marginBottom: 2 }}>Pagas</div>
+                        <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#22c55e' }}>{formatCurrency(totalPaid)}</div>
+                        <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>{expenses.filter(e => e.status === 'PAID').length} despesa(s)</div>
                     </div>
-                    <div style={{ marginLeft: 'auto', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                        {expenses.length} despesa(s)
+                    <div className="card" style={{ padding: '14px 18px', borderLeft: '4px solid #f59e0b' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600, marginBottom: 2 }}>Pendentes</div>
+                        <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#f59e0b' }}>{formatCurrency(totalPending)}</div>
+                        <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>
+                            {expenses.filter(e => e.status === 'PENDING').length} pendente(s) · {expenses.filter(e => e.status === 'OVERDUE').length} atrasada(s)
+                        </div>
                     </div>
                 </div>
 
-                {/* Filters */}
-                <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
-                    {[{ key: 'ALL', label: 'Todas' }, ...Object.entries(CATEGORIES).map(([k, v]) => ({ key: k, label: v.label }))].map(f => (
+                {/* Status filters */}
+                <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+                    {([
+                        { key: 'ALL' as const, label: 'Todas', count: expenses.length },
+                        { key: 'PENDING' as const, label: 'Pendentes', count: expenses.filter(e => e.status === 'PENDING').length },
+                        { key: 'PAID' as const, label: 'Pagas', count: expenses.filter(e => e.status === 'PAID').length },
+                        { key: 'OVERDUE' as const, label: 'Atrasadas', count: expenses.filter(e => e.status === 'OVERDUE').length },
+                    ]).map(f => (
+                        <button key={f.key} onClick={() => setFilterStatus(f.key)} style={{
+                            padding: '4px 12px', fontSize: '0.75rem', fontWeight: filterStatus === f.key ? 700 : 500,
+                            border: filterStatus === f.key ? 'none' : '1px solid var(--color-border)', borderRadius: 20, cursor: 'pointer',
+                            background: filterStatus === f.key ? 'var(--color-primary)' : 'transparent',
+                            color: filterStatus === f.key ? '#fff' : 'var(--color-text-muted)', transition: 'all 0.2s',
+                        }}>
+                            {f.label} <span style={{ opacity: 0.7 }}>{f.count}</span>
+                        </button>
+                    ))}
+                </div>
+
+                {/* Category filters */}
+                <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+                    {[{ key: 'ALL', label: 'Categorias' }, ...Object.entries(CATEGORIES).map(([k, v]) => ({ key: k, label: v.label }))].map(f => (
                         <button key={f.key} onClick={() => setFilterCategory(f.key)} style={{
-                            padding: '5px 14px', fontSize: '0.78rem', fontWeight: filterCategory === f.key ? 700 : 500,
-                            border: filterCategory === f.key ? 'none' : '1px solid var(--color-border)', borderRadius: 20, cursor: 'pointer',
-                            background: filterCategory === f.key ? 'var(--color-primary)' : 'transparent',
+                            padding: '3px 10px', fontSize: '0.7rem', fontWeight: filterCategory === f.key ? 700 : 500,
+                            border: filterCategory === f.key ? 'none' : '1px solid var(--color-border)', borderRadius: 14, cursor: 'pointer',
+                            background: filterCategory === f.key ? (f.key === 'ALL' ? 'var(--color-primary)' : (CATEGORIES[f.key]?.color || 'var(--color-primary)')) : 'transparent',
                             color: filterCategory === f.key ? '#fff' : 'var(--color-text-muted)', transition: 'all 0.2s',
                         }}>
-                            {f.label} <span style={{ opacity: 0.7, marginLeft: 2 }}>{f.key === 'ALL' ? expenses.length : expenses.filter(e => e.category === f.key).length}</span>
+                            {f.label}
                         </button>
                     ))}
                     <div style={{ position: 'relative', marginLeft: 'auto', flex: '0 1 260px' }}>
@@ -208,27 +274,36 @@ export default function ExpensesPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {filtered.map(exp => {
                             const cat = CATEGORIES[exp.category] || CATEGORIES.OTHER;
+                            const st = STATUS_MAP[exp.status] || STATUS_MAP.PENDING;
                             return (
                                 <div key={exp.id} className="card item-card">
-                                    <div className="card-bar" style={{ background: cat.color }} />
+                                    <div className="card-bar" style={{ background: st.color }} />
                                     <div style={{ width: 40, height: 40, borderRadius: 10, background: `${cat.color}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: cat.color, flexShrink: 0 }}>
                                         <CreditCard size={18} />
                                     </div>
                                     <div className="card-info">
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                                             <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{exp.description}</span>
-                                            <span style={{ fontSize: '0.65rem', fontWeight: 600, padding: '1px 8px', borderRadius: 6, background: `${cat.color}15`, color: cat.color }}>{cat.label}</span>
-                                            {exp.recurring && <span style={{ fontSize: '0.6rem', fontWeight: 600, padding: '1px 6px', borderRadius: 6, background: '#6366f115', color: '#6366f1' }}>Recorrente</span>}
+                                            <span style={{ fontSize: '0.6rem', fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: st.bg, color: st.color }}>{st.label}</span>
+                                            <span style={{ fontSize: '0.6rem', fontWeight: 600, padding: '1px 8px', borderRadius: 6, background: `${cat.color}15`, color: cat.color }}>{cat.label}</span>
+                                            {exp.recurring && <span style={{ fontSize: '0.55rem', fontWeight: 600, padding: '1px 6px', borderRadius: 6, background: '#6366f115', color: '#6366f1' }}>Recorrente</span>}
                                         </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 3, fontSize: '0.76rem', color: 'var(--color-text-muted)' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 3, fontSize: '0.76rem', color: 'var(--color-text-muted)', flexWrap: 'wrap' }}>
                                             <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><Calendar size={11} /> {new Date(exp.date).toLocaleDateString('pt-BR')}</span>
+                                            {exp.dueDate && <span>Venc: {new Date(exp.dueDate).toLocaleDateString('pt-BR')}</span>}
+                                            {exp.paidAt && <span style={{ color: '#22c55e' }}>Pago em {new Date(exp.paidAt).toLocaleDateString('pt-BR')}</span>}
                                             {exp.notes && <span>{exp.notes}</span>}
                                         </div>
                                     </div>
                                     <div className="card-value">
-                                        <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#ef4444' }}>{formatCurrency(exp.amount)}</div>
+                                        <div style={{ fontSize: '1.05rem', fontWeight: 800, color: exp.status === 'PAID' ? '#22c55e' : '#ef4444' }}>{formatCurrency(exp.amount)}</div>
                                     </div>
                                     <div className="card-actions">
+                                        {exp.status !== 'PAID' ? (
+                                            <button className="btn btn-sm" onClick={() => handleMarkPaid(exp.id)} style={{ padding: '5px 8px', background: '#22c55e', color: '#fff', border: 'none' }} title="Marcar como pago"><Check size={13} /></button>
+                                        ) : (
+                                            <button className="btn btn-secondary btn-sm" onClick={() => handleMarkUnpaid(exp.id)} style={{ padding: '5px 8px' }} title="Desfazer pagamento"><RotateCcw size={13} /></button>
+                                        )}
                                         <button className="btn btn-secondary btn-sm" onClick={() => openEdit(exp)} style={{ padding: '5px 8px' }} title="Editar"><Pencil size={13} /></button>
                                         <button className="btn btn-danger btn-sm" onClick={() => handleDelete(exp.id)} style={{ padding: '5px 8px' }} title="Excluir"><Trash2 size={13} /></button>
                                     </div>
@@ -276,10 +351,15 @@ export default function ExpensesPage() {
                                         <label className="form-label">Data *</label>
                                         <input className="form-input" type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} required />
                                     </div>
-                                    <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 24 }}>
-                                        <input type="checkbox" id="recurring" checked={form.recurring} onChange={e => setForm({ ...form, recurring: e.target.checked })} />
-                                        <label htmlFor="recurring" style={{ fontSize: '0.85rem', cursor: 'pointer' }}>Recorrente</label>
+                                    <div className="form-group">
+                                        <label className="form-label">Vencimento</label>
+                                        <input className="form-input" type="date" value={form.dueDate} onChange={e => setForm({ ...form, dueDate: e.target.value })} />
+                                        <span style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)', marginTop: 2, display: 'block' }}>Se não pagar até aqui, fica atrasada</span>
                                     </div>
+                                </div>
+                                <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <input type="checkbox" id="recurring" checked={form.recurring} onChange={e => setForm({ ...form, recurring: e.target.checked })} />
+                                    <label htmlFor="recurring" style={{ fontSize: '0.85rem', cursor: 'pointer' }}>Despesa recorrente</label>
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Observações</label>
