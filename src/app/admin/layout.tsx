@@ -66,7 +66,7 @@ export default function AdminLayout({
                 {/* Sidebar */}
                 <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
                     <div className="sidebar-brand">
-                        <h1><img src="/icons/favicon-512-white.png" alt="SF" style={{ width: 40, height: 40, display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />SFlow</h1>
+                        <h1><img src="/icons/favicon-512-white.png" alt="SF" style={{ width: 'auto', height: 28, display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />SFlow</h1>
                         <span className="brand-sub">Gestão de Mídia</span>
                     </div>
 
