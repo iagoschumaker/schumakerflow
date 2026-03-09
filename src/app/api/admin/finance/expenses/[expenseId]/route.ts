@@ -8,7 +8,6 @@ const updateSchema = z.object({
     amount: z.number().positive().optional(),
     category: z.enum(['SOFTWARE', 'EQUIPMENT', 'MARKETING', 'OFFICE', 'SALARY', 'FREELANCER', 'TAX', 'OTHER']).optional(),
     date: z.string().optional(),
-    dueDate: z.string().optional().nullable(),
     referenceMonth: z.string().optional(),
     notes: z.string().optional(),
     recurring: z.boolean().optional(),
@@ -48,14 +47,14 @@ export const PUT = withAuth(
             }
         }
         if (parsed.data.date !== undefined) {
-            const d = new Date(`${parsed.data.date}T12:00:00`);
-            data.date = d;
+            // Parse date as UTC noon to avoid timezone shifts
+            const [y, m, d] = parsed.data.date.split('-').map(Number);
+            const utcDate = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+            data.date = utcDate;
+            data.dueDate = utcDate;
             if (!parsed.data.referenceMonth) {
-                data.referenceMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                data.referenceMonth = `${y}-${String(m).padStart(2, '0')}`;
             }
-        }
-        if (parsed.data.dueDate !== undefined) {
-            data.dueDate = parsed.data.dueDate ? new Date(parsed.data.dueDate) : null;
         }
 
         const expense = await prisma.expense.update({
@@ -89,11 +88,17 @@ export const PATCH = withAuth(
 
             // Auto-generate next month for recurring expenses
             if (existing.recurring) {
+                // Use UTC methods to avoid timezone day-shift
                 const curDate = new Date(existing.date);
-                const nextDate = new Date(curDate.getFullYear(), curDate.getMonth() + 1, curDate.getDate());
-                const nextRefMonth = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}`;
+                const nextDate = new Date(Date.UTC(
+                    curDate.getUTCFullYear(),
+                    curDate.getUTCMonth() + 1,
+                    curDate.getUTCDate(),
+                    12, 0, 0
+                ));
+                const nextRefMonth = `${nextDate.getUTCFullYear()}-${String(nextDate.getUTCMonth() + 1).padStart(2, '0')}`;
 
-                // Idempotency: check if next month already exists
+                // Idempotency check
                 const alreadyExists = await prisma.expense.findFirst({
                     where: {
                         tenantId: ctx.tenantId,
@@ -105,7 +110,12 @@ export const PATCH = withAuth(
 
                 if (!alreadyExists) {
                     const nextDueDate = existing.dueDate
-                        ? new Date(new Date(existing.dueDate).getFullYear(), new Date(existing.dueDate).getMonth() + 1, new Date(existing.dueDate).getDate())
+                        ? new Date(Date.UTC(
+                            new Date(existing.dueDate).getUTCFullYear(),
+                            new Date(existing.dueDate).getUTCMonth() + 1,
+                            new Date(existing.dueDate).getUTCDate(),
+                            12, 0, 0
+                        ))
                         : null;
 
                     await prisma.expense.create({

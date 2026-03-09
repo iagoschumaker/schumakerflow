@@ -3,6 +3,12 @@ import { withAuth, apiSuccess, apiError, ApiContext } from '@/lib/api/helpers';
 import prisma from '@/lib/db';
 import { z } from 'zod';
 
+// Helper: parse "YYYY-MM-DD" into a UTC noon Date to avoid timezone shifts
+function parseDate(dateStr: string): Date {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+}
+
 const expenseSchema = z.object({
     description: z.string().min(1, 'Descrição é obrigatória'),
     amount: z.number().positive('Valor deve ser positivo'),
@@ -12,7 +18,7 @@ const expenseSchema = z.object({
     notes: z.string().optional(),
     recurring: z.boolean().optional(),
     status: z.enum(['PENDING', 'PAID', 'OVERDUE', 'CANCELLED']).optional(),
-    installments: z.number().int().min(1).max(60).optional(), // number of parcelas
+    installments: z.number().int().min(1).max(60).optional(),
 });
 
 // GET /api/admin/finance/expenses?month=2026-03
@@ -25,8 +31,8 @@ export const GET = withAuth(
 
         if (month) {
             const [y, m] = month.split('-').map(Number);
-            const start = new Date(y, m - 1, 1);
-            const end = new Date(y, m, 1);
+            const start = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0));
+            const end = new Date(Date.UTC(y, m, 1, 0, 0, 0));
             where.date = { gte: start, lt: end };
         }
 
@@ -37,7 +43,6 @@ export const GET = withAuth(
 
         // Auto-mark overdue: past date and still PENDING
         const now = new Date();
-        now.setHours(23, 59, 59, 999);
         const updated = expenses.map(e => {
             if (e.status === 'PENDING' && new Date(e.date) < now) {
                 return { ...e, status: 'OVERDUE' as const };
@@ -60,13 +65,19 @@ export const POST = withAuth(
         }
 
         const { description, amount, category, date, notes, recurring, status, installments } = parsed.data;
-        const dateObj = new Date(`${date}T12:00:00`);
+        const dateObj = parseDate(date);
         const numInstallments = installments || 1;
 
         const created = [];
         for (let i = 0; i < numInstallments; i++) {
-            const installDate = new Date(dateObj.getFullYear(), dateObj.getMonth() + i, dateObj.getDate());
-            const refMonth = `${installDate.getFullYear()}-${String(installDate.getMonth() + 1).padStart(2, '0')}`;
+            // Advance month using UTC to avoid timezone shifts
+            const installDate = new Date(Date.UTC(
+                dateObj.getUTCFullYear(),
+                dateObj.getUTCMonth() + i,
+                dateObj.getUTCDate(),
+                12, 0, 0
+            ));
+            const refMonth = `${installDate.getUTCFullYear()}-${String(installDate.getUTCMonth() + 1).padStart(2, '0')}`;
             const desc = numInstallments > 1
                 ? `${description} (${i + 1}/${numInstallments})`
                 : description;
