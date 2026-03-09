@@ -96,103 +96,105 @@ export default function SelectContextPage() {
     };
 
     return (
-        <div className="login-container">
-            <div className="login-card" style={{ maxWidth: 460 }}>
-                <div className="login-logo">
-                    <img src="/icons/favicon-512-white.png" alt="Schumaker Flow" style={{ width: 64, height: 64, marginBottom: '0.5rem' }} />
-                    <h1>SFlow</h1>
-                    <p style={{ marginTop: 4 }}>Olá, <strong>{userName}</strong></p>
-                </div>
+        <div className="login-container" style={{ justifyContent: 'center' }}>
+            <div className="login-side" style={{ flex: 'none' }}>
+                <div className="login-card" style={{ maxWidth: 460 }}>
+                    <div className="login-logo">
+                        <img src="/icons/favicon-512-white.png" alt="SFlow" />
+                        <h1>SFlow</h1>
+                        <p style={{ marginTop: 4 }}>Olá, <strong>{userName}</strong></p>
+                    </div>
 
-                <div style={{
-                    fontSize: '0.85rem',
-                    color: 'var(--color-text-muted)',
-                    textAlign: 'center',
-                    marginBottom: 'var(--space-5)',
-                }}>
-                    Selecione em qual sessão deseja entrar:
-                </div>
+                    <div style={{
+                        fontSize: '0.85rem',
+                        color: 'var(--color-text-muted)',
+                        textAlign: 'center',
+                        marginBottom: 'var(--space-5)',
+                    }}>
+                        Selecione em qual sessão deseja entrar:
+                    </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                    {contexts.map((ctx, i) => {
-                        const color = getColor(ctx.type);
-                        const key = ctx.type + (ctx.tenantId || '') + (ctx.clientId || '');
-                        return (
-                            <button
-                                key={i}
-                                onClick={() => selectContext(ctx)}
-                                disabled={!!loading}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 'var(--space-3)',
-                                    padding: 'var(--space-4)',
-                                    borderRadius: 'var(--radius-lg)',
-                                    border: '1px solid var(--color-border)',
-                                    background: 'var(--color-surface)',
-                                    cursor: loading ? 'not-allowed' : 'pointer',
-                                    textAlign: 'left',
-                                    transition: 'all 0.2s ease',
-                                    opacity: loading && loading !== key ? 0.5 : 1,
-                                    fontFamily: 'var(--font-family)',
-                                    width: '100%',
-                                }}
-                                onMouseEnter={(e) => {
-                                    if (!loading) {
-                                        e.currentTarget.style.borderColor = color;
-                                        e.currentTarget.style.boxShadow = `0 4px 16px ${color}18`;
-                                        e.currentTarget.style.transform = 'translateY(-1px)';
-                                    }
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.borderColor = 'var(--color-border)';
-                                    e.currentTarget.style.boxShadow = 'none';
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                }}
-                            >
-                                <div style={{
-                                    width: 44, height: 44, borderRadius: 12,
-                                    background: `${color}14`,
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    color, flexShrink: 0,
-                                }}>
-                                    {getIcon(ctx.type)}
-                                </div>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--color-text)' }}>
-                                        {getLabel(ctx)}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                        {contexts.map((ctx, i) => {
+                            const color = getColor(ctx.type);
+                            const key = ctx.type + (ctx.tenantId || '') + (ctx.clientId || '');
+                            return (
+                                <button
+                                    key={i}
+                                    onClick={() => selectContext(ctx)}
+                                    disabled={!!loading}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 'var(--space-3)',
+                                        padding: 'var(--space-4)',
+                                        borderRadius: 'var(--radius-lg)',
+                                        border: '1px solid var(--color-border)',
+                                        background: 'var(--color-surface)',
+                                        cursor: loading ? 'not-allowed' : 'pointer',
+                                        textAlign: 'left',
+                                        transition: 'all 0.2s ease',
+                                        opacity: loading && loading !== key ? 0.5 : 1,
+                                        fontFamily: 'var(--font-family)',
+                                        width: '100%',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (!loading) {
+                                            e.currentTarget.style.borderColor = color;
+                                            e.currentTarget.style.boxShadow = `0 4px 16px ${color}18`;
+                                            e.currentTarget.style.transform = 'translateY(-1px)';
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.borderColor = 'var(--color-border)';
+                                        e.currentTarget.style.boxShadow = 'none';
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                    }}
+                                >
+                                    <div style={{
+                                        width: 44, height: 44, borderRadius: 12,
+                                        background: `${color}14`,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        color, flexShrink: 0,
+                                    }}>
+                                        {getIcon(ctx.type)}
                                     </div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
-                                        {getSub(ctx)}
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--color-text)' }}>
+                                            {getLabel(ctx)}
+                                        </div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                                            {getSub(ctx)}
+                                        </div>
                                     </div>
-                                </div>
-                                <ChevronRight size={18} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
-                            </button>
-                        );
-                    })}
-                </div>
+                                    <ChevronRight size={18} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+                                </button>
+                            );
+                        })}
+                    </div>
 
-                <div className="text-center mt-6">
-                    <button
-                        onClick={handleLogout}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            color: 'var(--color-text-muted)',
-                            cursor: 'pointer',
-                            fontSize: 'var(--font-size-sm)',
-                            fontFamily: 'var(--font-family)',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                        }}
-                    >
-                        <LogOut size={14} /> Sair
-                    </button>
-                </div>
+                    <div className="text-center mt-6">
+                        <button
+                            onClick={handleLogout}
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                color: 'var(--color-text-muted)',
+                                cursor: 'pointer',
+                                fontSize: 'var(--font-size-sm)',
+                                fontFamily: 'var(--font-family)',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                            }}
+                        >
+                            <LogOut size={14} /> Sair
+                        </button>
+                    </div>
 
-                <div className="text-center mt-4 text-xs text-muted">
-                    © {new Date().getFullYear()} Schumaker Flow. Todos os direitos reservados.
+                    <div style={{ textAlign: 'center', marginTop: 'var(--space-4)', fontSize: 'var(--font-size-xs)', color: 'rgba(255,255,255,0.3)' }}>
+                        © {new Date().getFullYear()} SFlow. Todos os direitos reservados.
+                    </div>
                 </div>
             </div>
         </div>

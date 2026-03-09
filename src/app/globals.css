@@ -740,26 +740,84 @@ tbody tr:last-child td {
 }
 
 /* ========================================
-   Login Page
+   Login Page — Premium Split Layout
    ======================================== */
 
 .login-container {
   min-height: 100vh;
   display: flex;
+  background: #070b14;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Blue glow background */
+.login-container::before {
+  content: '';
+  position: absolute;
+  top: 30%;
+  right: 20%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.login-container::after {
+  content: '';
+  position: absolute;
+  bottom: 10%;
+  left: 30%;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Banner side (left) */
+.login-banner {
+  flex: 1;
+  display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-bg);
-  padding: var(--space-4);
+  position: relative;
+  z-index: 1;
+  padding: var(--space-6);
+}
+
+.login-banner img {
+  max-width: 90%;
+  max-height: 80vh;
+  object-fit: contain;
+  border-radius: var(--radius-xl);
+  filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.4));
+}
+
+/* Form side (right) */
+.login-side {
+  flex: 0 0 480px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  position: relative;
+  z-index: 1;
 }
 
 .login-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: rgba(15, 20, 35, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(99, 102, 241, 0.15);
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 80px rgba(99, 102, 241, 0.05);
   padding: var(--space-8);
   width: 100%;
-  max-width: 380px;
+  max-width: 400px;
   animation: slideUp 0.5s ease;
 }
 
@@ -768,16 +826,60 @@ tbody tr:last-child td {
   margin-bottom: var(--space-6);
 }
 
+.login-logo img {
+  height: 48px;
+  width: auto;
+  margin-bottom: var(--space-2);
+}
+
 .login-logo h1 {
   font-size: var(--font-size-xl);
   font-weight: 700;
-  color: var(--color-text);
+  color: #fff;
   margin-bottom: var(--space-1);
 }
 
 .login-logo p {
   font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.login-card .form-label {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.login-card .form-input {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.login-card .form-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.login-card .form-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+/* Mobile — stack and hide banner */
+@media (max-width: 900px) {
+  .login-container {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .login-banner {
+    display: none;
+  }
+
+  .login-side {
+    flex: none;
+    width: 100%;
+    padding: var(--space-4);
+  }
 }
 
 /* ========================================
