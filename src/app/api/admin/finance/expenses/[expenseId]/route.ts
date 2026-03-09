@@ -48,7 +48,7 @@ export const PUT = withAuth(
             }
         }
         if (parsed.data.date !== undefined) {
-            const d = new Date(parsed.data.date);
+            const d = new Date(`${parsed.data.date}T12:00:00`);
             data.date = d;
             if (!parsed.data.referenceMonth) {
                 data.referenceMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;

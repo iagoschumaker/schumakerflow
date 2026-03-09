@@ -60,7 +60,7 @@ export const POST = withAuth(
         }
 
         const { description, amount, category, date, notes, recurring, status, installments } = parsed.data;
-        const dateObj = new Date(date);
+        const dateObj = new Date(`${date}T12:00:00`);
         const numInstallments = installments || 1;
 
         const created = [];
