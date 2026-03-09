@@ -936,7 +936,7 @@ export default function FinancePage() {
                             <button
                                 className="btn"
                                 style={{ width: '100%', background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--color-text)' }}
-                                onClick={() => generateBillingPdf(qrModal.invoices, pixSettings)}
+                                onClick={() => generateBillingPdf(qrModal.invoices, pixSettings, { qrCodeDataUrl: qrModal.qrDataUrl, pixPayload: qrModal.payload })}
                             >
                                 <FileDown size={16} /> 4. Baixar PDF da Cobrança
                             </button>
