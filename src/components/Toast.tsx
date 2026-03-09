@@ -124,7 +124,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                                 onClick={() => handleConfirm(false)}
                                 style={{ padding: '8px 20px' }}
                             >
-                                {confirm.opts.cancelText || 'Cancelar'}
+                                {confirm.opts.cancelText || 'Não, voltar'}
                             </button>
                             <button
                                 className="btn"

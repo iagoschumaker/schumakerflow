@@ -166,7 +166,7 @@ export default function FinancePage() {
     };
 
     const handleCancelInvoice = async (invoiceId: string) => {
-        const ok = await showConfirm({ title: 'Cancelar Fatura', message: 'Cancelar esta fatura?', confirmText: 'Cancelar', variant: 'danger' });
+        const ok = await showConfirm({ title: 'Cancelar Fatura', message: 'Tem certeza que deseja cancelar esta fatura?', confirmText: 'Sim, cancelar', variant: 'danger' });
         if (!ok) return;
         await apiPost({ action: 'cancel_invoice', invoiceId });
         showToast('Fatura cancelada', 'success');
