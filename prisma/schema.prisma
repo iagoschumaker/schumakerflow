@@ -535,7 +535,7 @@ model AuditLog {
 model PlanTemplate {
   id              String   @id @default(uuid())
   name            String   @unique
-  displayName     String
+  displayName     String   @default("")
   maxProjects     Int?
   maxUsers        Int?
   featureFinance  Boolean  @default(true)
@@ -548,8 +548,8 @@ model PlanTemplate {
 model ShareLink {
   id        String    @id @default(uuid())
   token     String    @unique
-  fileId    String
-  tenantId  String
+  fileId    String?
+  tenantId  String?
   expiresAt DateTime?
   password  String?
   maxViews  Int?
@@ -557,7 +557,7 @@ model ShareLink {
   isActive  Boolean   @default(true)
   createdAt DateTime  @default(now())
 
-  file      File      @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  file      File?     @relation(fields: [fileId], references: [id], onDelete: Cascade)
 
   @@index([token])
   @@index([fileId])

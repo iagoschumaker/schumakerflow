@@ -9,6 +9,7 @@ export interface ApiContext {
     session: SessionPayload;
     tenant: Tenant | null;
     tenantId: string;
+    clientId?: string;
 }
 
 /**
@@ -59,7 +60,7 @@ export function withAuth(
                 }
             }
 
-            return handler(req, { session, tenant, tenantId });
+            return handler(req, { session, tenant, tenantId, clientId: session.clientId });
         } catch (error) {
             console.error('API Error:', error);
             return NextResponse.json(
