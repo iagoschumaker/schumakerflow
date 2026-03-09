@@ -57,7 +57,7 @@ export default function ExpensesPage() {
     const [editing, setEditing] = useState<Expense | null>(null);
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState({
-        description: '', amount: '', category: 'OTHER', date: '', dueDate: '', notes: '', recurring: false,
+        description: '', amount: '', category: 'OTHER', date: '', installments: '1', notes: '', recurring: false,
     });
 
     const monthKey = `${currentMonth.year}-${String(currentMonth.month).padStart(2, '0')}`;
@@ -90,7 +90,7 @@ export default function ExpensesPage() {
 
     const openNew = () => {
         setEditing(null);
-        setForm({ description: '', amount: '', category: 'OTHER', date: new Date().toISOString().slice(0, 10), dueDate: '', notes: '', recurring: false });
+        setForm({ description: '', amount: '', category: 'OTHER', date: new Date().toISOString().slice(0, 10), installments: '1', notes: '', recurring: false });
         setShowModal(true);
     };
 
@@ -99,7 +99,7 @@ export default function ExpensesPage() {
         setForm({
             description: e.description, amount: String(Number(e.amount)),
             category: e.category, date: e.date.slice(0, 10),
-            dueDate: e.dueDate ? e.dueDate.slice(0, 10) : '',
+            installments: '1',
             notes: e.notes || '', recurring: e.recurring,
         });
         setShowModal(true);
@@ -112,15 +112,17 @@ export default function ExpensesPage() {
         if (!form.date) { showToast('Data é obrigatória', 'warning'); return; }
         setSaving(true);
         try {
-            const body = {
+            const body: Record<string, unknown> = {
                 description: form.description.trim(),
                 amount: Number(form.amount),
                 category: form.category,
                 date: form.date,
-                dueDate: form.dueDate || null,
                 notes: form.notes || undefined,
                 recurring: form.recurring,
             };
+            if (!editing && Number(form.installments) > 1) {
+                body.installments = Number(form.installments);
+            }
             const url = editing ? `/api/admin/finance/expenses/${editing.id}` : '/api/admin/finance/expenses';
             const res = await fetch(url, {
                 method: editing ? 'PUT' : 'POST',
@@ -348,18 +350,23 @@ export default function ExpensesPage() {
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
                                     <div className="form-group">
-                                        <label className="form-label">Data *</label>
+                                        <label className="form-label">Data (vencimento) *</label>
                                         <input className="form-input" type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} required />
+                                        <span style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)', marginTop: 2, display: 'block' }}>Se não pagar até esta data, fica atrasada</span>
                                     </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Vencimento</label>
-                                        <input className="form-input" type="date" value={form.dueDate} onChange={e => setForm({ ...form, dueDate: e.target.value })} />
-                                        <span style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)', marginTop: 2, display: 'block' }}>Se não pagar até aqui, fica atrasada</span>
-                                    </div>
+                                    {!editing && (
+                                        <div className="form-group">
+                                            <label className="form-label">Parcelas</label>
+                                            <input className="form-input" type="number" min="1" max="60" value={form.installments} onChange={e => setForm({ ...form, installments: e.target.value })} />
+                                            <span style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)', marginTop: 2, display: 'block' }}>
+                                                {Number(form.installments) > 1 ? `Gera ${form.installments} despesas (uma por mês)` : 'Despesa única'}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <input type="checkbox" id="recurring" checked={form.recurring} onChange={e => setForm({ ...form, recurring: e.target.checked })} />
-                                    <label htmlFor="recurring" style={{ fontSize: '0.85rem', cursor: 'pointer' }}>Despesa recorrente</label>
+                                    <label htmlFor="recurring" style={{ fontSize: '0.85rem', cursor: 'pointer' }}>Despesa recorrente (sem fim)</label>
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Observações</label>

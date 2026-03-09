@@ -8,11 +8,11 @@ const expenseSchema = z.object({
     amount: z.number().positive('Valor deve ser positivo'),
     category: z.enum(['SOFTWARE', 'EQUIPMENT', 'MARKETING', 'OFFICE', 'SALARY', 'FREELANCER', 'TAX', 'OTHER']),
     date: z.string().min(1),
-    dueDate: z.string().optional().nullable(),
     referenceMonth: z.string().optional(),
     notes: z.string().optional(),
     recurring: z.boolean().optional(),
     status: z.enum(['PENDING', 'PAID', 'OVERDUE', 'CANCELLED']).optional(),
+    installments: z.number().int().min(1).max(60).optional(), // number of parcelas
 });
 
 // GET /api/admin/finance/expenses?month=2026-03
@@ -35,10 +35,11 @@ export const GET = withAuth(
             orderBy: { date: 'desc' },
         });
 
-        // Auto-mark overdue expenses (past dueDate and still PENDING)
+        // Auto-mark overdue: past date and still PENDING
         const now = new Date();
+        now.setHours(23, 59, 59, 999);
         const updated = expenses.map(e => {
-            if (e.status === 'PENDING' && e.dueDate && new Date(e.dueDate) < now) {
+            if (e.status === 'PENDING' && new Date(e.date) < now) {
                 return { ...e, status: 'OVERDUE' as const };
             }
             return e;
@@ -58,26 +59,36 @@ export const POST = withAuth(
             return apiError(parsed.error.issues.map((e: { message: string }) => e.message).join(', '), 400);
         }
 
-        const { description, amount, category, date, notes, recurring, dueDate, status } = parsed.data;
+        const { description, amount, category, date, notes, recurring, status, installments } = parsed.data;
         const dateObj = new Date(date);
-        const refMonth = parsed.data.referenceMonth || `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
+        const numInstallments = installments || 1;
 
-        const expense = await prisma.expense.create({
-            data: {
-                tenantId: ctx.tenantId,
-                description,
-                amount,
-                category,
-                date: dateObj,
-                dueDate: dueDate ? new Date(dueDate) : null,
-                referenceMonth: refMonth,
-                notes: notes || null,
-                recurring: recurring || false,
-                status: status || 'PENDING',
-            },
-        });
+        const created = [];
+        for (let i = 0; i < numInstallments; i++) {
+            const installDate = new Date(dateObj.getFullYear(), dateObj.getMonth() + i, dateObj.getDate());
+            const refMonth = `${installDate.getFullYear()}-${String(installDate.getMonth() + 1).padStart(2, '0')}`;
+            const desc = numInstallments > 1
+                ? `${description} (${i + 1}/${numInstallments})`
+                : description;
 
-        return apiSuccess(expense, 201);
+            const expense = await prisma.expense.create({
+                data: {
+                    tenantId: ctx.tenantId,
+                    description: desc,
+                    amount: amount,
+                    category,
+                    date: installDate,
+                    dueDate: installDate,
+                    referenceMonth: refMonth,
+                    notes: notes || null,
+                    recurring: recurring || false,
+                    status: status || 'PENDING',
+                },
+            });
+            created.push(expense);
+        }
+
+        return apiSuccess(numInstallments === 1 ? created[0] : created, 201);
     },
     { roles: ['SUPERADMIN', 'TENANT_ADMIN'] }
 );
