@@ -66,7 +66,7 @@ export default function AdminLayout({
                 {/* Sidebar */}
                 <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
                     <div className="sidebar-brand">
-                        <h1><Zap size={20} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '6px' }} />Schumaker Flow</h1>
+                        <h1><img src="/icons/favicon-512-white.png" alt="SF" style={{ width: 24, height: 24, display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />Schumaker Flow</h1>
                         <span className="brand-sub">Client, Media & Finance Management</span>
                     </div>
 

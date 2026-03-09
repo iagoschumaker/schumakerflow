@@ -88,7 +88,7 @@ export default function LoginPage() {
         <div className="login-container">
             <div className="login-card">
                 <div className="login-logo">
-                    <div style={{ marginBottom: '0.5rem', color: 'var(--color-primary)' }}><Zap size={40} /></div>
+                    <img src="/icons/favicon-512-white.png" alt="Schumaker Flow" style={{ width: 64, height: 64, marginBottom: '0.5rem' }} />
                     <h1>Schumaker Flow</h1>
                     <p>Client, Media & Finance Management</p>
                 </div>

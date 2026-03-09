@@ -14,10 +14,11 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   icons: {
     icon: [
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/icons/favicon-512-black.png", sizes: "512x512", type: "image/png", media: "(prefers-color-scheme: light)" },
+      { url: "/icons/favicon-512-white.png", sizes: "512x512", type: "image/png", media: "(prefers-color-scheme: dark)" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
     ],
-    apple: "/icon-192.png",
+    apple: "/icons/icon-192.png",
   },
   themeColor: "#6366f1",
   appleWebApp: {
