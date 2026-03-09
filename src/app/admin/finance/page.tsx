@@ -341,13 +341,13 @@ export default function FinancePage() {
                     .finance-page .main-tabs button { margin-bottom: 0 !important; }
                     .finance-page .filter-bar { gap: 6px; }
                     .finance-page .filter-bar .search-box { flex: 1 1 100%; margin-left: 0; margin-top: 4px; }
-                    .finance-page .item-card { flex-wrap: wrap; padding: 12px 14px; gap: 10px; position: relative; padding-right: 80px; }
+                    .finance-page .item-card { flex-wrap: wrap; padding: 12px 14px; gap: 8px; }
                     .finance-page .item-card .card-icon { width: 32px; height: 32px; }
-                    .finance-page .item-card .card-info { flex-basis: calc(100% - 56px); }
-                    .finance-page .item-card .card-value { position: absolute; top: 12px; right: 14px; }
-                    .finance-page .item-card .card-actions { position: absolute; bottom: 10px; right: 14px; }
-                    .finance-page .item-card .card-actions .btn { padding: 3px 6px !important; }
-                    .finance-page .item-card .card-actions .btn svg { width: 11px; height: 11px; }
+                    .finance-page .item-card .card-info { flex: 1; min-width: 0; }
+                    .finance-page .item-card .card-value { margin-left: auto; flex-shrink: 0; }
+                    .finance-page .item-card .card-actions { width: 100%; display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; border-top: 1px solid var(--color-border); padding-top: 8px; margin-top: 2px; }
+                    .finance-page .item-card .card-actions .btn { padding: 4px 8px !important; font-size: 0.7rem !important; }
+                    .finance-page .item-card .card-actions .btn svg { width: 12px; height: 12px; }
                 }
             `}</style>
             <div className="page-header">
