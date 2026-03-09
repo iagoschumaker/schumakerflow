@@ -340,6 +340,41 @@ export const POST = withAuth(
             return apiSuccess({ message: 'Invoice marked as paid' });
         }
 
+        if (action === 'mark_unpaid') {
+            const schema = z.object({ invoiceId: z.string().uuid() });
+            const parsed = schema.safeParse(body);
+            if (!parsed.success) return apiError('Invalid input', 400);
+
+            const invoice = await prisma.invoice.findFirst({
+                where: { id: parsed.data.invoiceId, tenantId: ctx.tenantId },
+            });
+            if (!invoice) return apiError('Invoice not found', 404);
+            if (invoice.status !== 'PAID') return apiError('Fatura não está paga', 400);
+
+            // Revert to PENDING
+            await prisma.invoice.update({
+                where: { id: parsed.data.invoiceId },
+                data: { status: 'PENDING', paidAt: null },
+            });
+
+            // Delete manual payment records for this invoice
+            await prisma.payment.deleteMany({
+                where: { invoiceId: parsed.data.invoiceId, method: 'MANUAL' },
+            });
+
+            await prisma.auditLog.create({
+                data: {
+                    tenantId: ctx.tenantId,
+                    userId: ctx.session.userId,
+                    action: 'invoice.mark_unpaid',
+                    entityType: 'Invoice',
+                    entityId: parsed.data.invoiceId,
+                },
+            });
+
+            return apiSuccess({ message: 'Pagamento desfeito' });
+        }
+
         if (action === 'cancel_invoice') {
             const schema = z.object({ invoiceId: z.string().uuid() });
             const parsed = schema.safeParse(body);

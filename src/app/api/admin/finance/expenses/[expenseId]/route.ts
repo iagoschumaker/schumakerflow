@@ -86,6 +86,45 @@ export const PATCH = withAuth(
                 where: { id: expenseId },
                 data: { status: 'PAID', paidAt: new Date() },
             });
+
+            // Auto-generate next month for recurring expenses
+            if (existing.recurring) {
+                const curDate = new Date(existing.date);
+                const nextDate = new Date(curDate.getFullYear(), curDate.getMonth() + 1, curDate.getDate());
+                const nextRefMonth = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}`;
+
+                // Idempotency: check if next month already exists
+                const alreadyExists = await prisma.expense.findFirst({
+                    where: {
+                        tenantId: ctx.tenantId,
+                        description: existing.description,
+                        referenceMonth: nextRefMonth,
+                        category: existing.category,
+                    },
+                });
+
+                if (!alreadyExists) {
+                    const nextDueDate = existing.dueDate
+                        ? new Date(new Date(existing.dueDate).getFullYear(), new Date(existing.dueDate).getMonth() + 1, new Date(existing.dueDate).getDate())
+                        : null;
+
+                    await prisma.expense.create({
+                        data: {
+                            tenantId: ctx.tenantId,
+                            description: existing.description,
+                            amount: existing.amount,
+                            category: existing.category,
+                            date: nextDate,
+                            dueDate: nextDueDate,
+                            referenceMonth: nextRefMonth,
+                            notes: existing.notes,
+                            recurring: true,
+                            status: 'PENDING',
+                        },
+                    });
+                }
+            }
+
             return apiSuccess(expense);
         }
 

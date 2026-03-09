@@ -6,7 +6,7 @@ import {
     FileText, ClipboardList, CreditCard, Search, X, Plus,
     Loader2, DollarSign, Receipt, Pencil, Trash2, Check, Ban,
     Calendar, ArrowRight, User, MessageCircle, QrCode, Copy, FileDown,
-    ChevronLeft, ChevronRight
+    ChevronLeft, ChevronRight, RotateCcw
 } from 'lucide-react';
 import FloatingActionButton from '@/components/FloatingActionButton';
 import { generateBillingPdf, generateBillingPdfWithQr, generateReceiptPdf } from '@/lib/finance/pdf';
@@ -162,6 +162,14 @@ export default function FinancePage() {
         if (!ok) return;
         await apiPost({ action: 'mark_paid', invoiceId });
         showToast('Fatura marcada como paga!', 'success');
+        loadData();
+    };
+
+    const handleMarkUnpaid = async (invoiceId: string) => {
+        const ok = await showConfirm({ title: 'Desfazer Pagamento', message: 'Voltar esta fatura para pendente?', confirmText: 'Sim, desfazer', variant: 'warning' });
+        if (!ok) return;
+        await apiPost({ action: 'mark_unpaid', invoiceId });
+        showToast('Pagamento desfeito', 'success');
         loadData();
     };
 
@@ -553,6 +561,9 @@ export default function FinancePage() {
                                         <button className="btn btn-sm" onClick={(e) => { e.stopPropagation(); generateBillingPdfWithQr([inv], pixSettings); }} style={{ padding: '4px 10px', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.4)', color: '#6366f1', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.7rem', fontWeight: 600 }} title="Baixar PDF da Fatura"><FileDown size={12} /> PDF</button>
                                         {inv.status === 'PAID' && (
                                             <button className="btn btn-sm" onClick={(e) => { e.stopPropagation(); generateReceiptPdf([inv], pixSettings); }} style={{ padding: '4px 10px', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)', color: '#22c55e', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.7rem', fontWeight: 600 }} title="Baixar Comprovante"><FileDown size={12} /> Recibo</button>
+                                        )}
+                                        {inv.status === 'PAID' && (
+                                            <button className="btn btn-sm" onClick={() => handleMarkUnpaid(inv.id)} style={{ padding: '5px 8px', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', color: '#f59e0b' }} title="Desfazer Pagamento"><RotateCcw size={13} /></button>
                                         )}
                                         <button className="btn btn-secondary btn-sm" onClick={() => openEditInvoice(inv)} style={{ padding: '5px 8px' }} title="Editar"><Pencil size={13} /></button>
                                         <button className="btn btn-danger btn-sm" onClick={() => handleDeleteInvoice(inv.id)} style={{ padding: '5px 8px' }} title="Excluir"><Trash2 size={13} /></button>
