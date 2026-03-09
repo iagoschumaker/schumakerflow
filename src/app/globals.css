@@ -756,54 +756,36 @@ tbody tr:last-child td {
   content: '';
   position: absolute;
   top: 30%;
-  right: 20%;
+  right: 10%;
   width: 500px;
   height: 500px;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, transparent 70%);
   border-radius: 50%;
   pointer-events: none;
   z-index: 0;
 }
 
-.login-container::after {
-  content: '';
-  position: absolute;
-  bottom: 10%;
-  left: 30%;
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%);
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* Banner side (left) */
+/* Banner side (left 50%) */
 .login-banner {
+  flex: 1;
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.login-banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Form side (right 50%) */
+.login-side {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
-  z-index: 1;
-  padding: var(--space-6);
-}
-
-.login-banner img {
-  max-width: 90%;
-  max-height: 80vh;
-  object-fit: contain;
-  border-radius: var(--radius-xl);
-  filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.4));
-}
-
-/* Form side (right) */
-.login-side {
-  flex: 0 0 480px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-6);
+  padding: var(--space-8);
   position: relative;
   z-index: 1;
 }
@@ -863,22 +845,19 @@ tbody tr:last-child td {
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
 }
 
-/* Mobile — stack and hide banner */
+/* Mobile — hide banner, center form */
 @media (max-width: 900px) {
-  .login-container {
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-  }
-
   .login-banner {
     display: none;
   }
 
   .login-side {
-    flex: none;
-    width: 100%;
     padding: var(--space-4);
+  }
+
+  .login-container {
+    align-items: center;
+    justify-content: center;
   }
 }
 
