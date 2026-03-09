@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import {
     FolderKanban, Sparkles, CheckCircle, Download, Loader2,
     Film, Image, FileText, FileSpreadsheet, File, Clock, Calendar,
-    ChevronDown, ChevronUp, Search, Filter, X, Share2
+    ChevronDown, ChevronUp, Search, Filter, X, Share2, Wand2, Copy, Check
 } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 
@@ -51,6 +51,10 @@ export default function PortalProjectsPage() {
     const [statusFilter, setStatusFilter] = useState('ALL');
     const [searchText, setSearchText] = useState('');
     const [filterPreset, setFilterPreset] = useState<FilterPreset>('all');
+    const [aiModal, setAiModal] = useState<{ fileId: string; fileName: string; projectName: string; clientName: string; fileKind: string } | null>(null);
+    const [aiCaption, setAiCaption] = useState('');
+    const [aiLoading, setAiLoading] = useState(false);
+    const [aiCopied, setAiCopied] = useState(false);
 
     const loadData = async () => {
         setLoading(true);
@@ -105,8 +109,21 @@ export default function PortalProjectsPage() {
                 return;
             }
             const blob = await res.blob();
-            const extension = file.name.split('.').pop() || 'jpg';
-            const fileObj = new window.File([blob], file.name, { type: file.mimeType || `image/${extension}` });
+
+            // Infer correct mimeType — fix for videos that were getting image/* fallback
+            let mimeType = file.mimeType;
+            if (!mimeType) {
+                const ext = file.name.split('.').pop()?.toLowerCase() || '';
+                const mimeMap: Record<string, string> = {
+                    mp4: 'video/mp4', mov: 'video/quicktime', avi: 'video/x-msvideo',
+                    mkv: 'video/x-matroska', webm: 'video/webm',
+                    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+                    gif: 'image/gif', webp: 'image/webp', heic: 'image/heic',
+                };
+                mimeType = mimeMap[ext] || 'application/octet-stream';
+            }
+
+            const fileObj = new window.File([blob], file.name, { type: mimeType });
 
             // Try native share with file
             if (navigator.share && navigator.canShare && navigator.canShare({ files: [fileObj] })) {
@@ -133,12 +150,30 @@ export default function PortalProjectsPage() {
             }
         } catch (err: any) {
             if (err?.name !== 'AbortError') {
-                showToast('Erro ao compartilhar', 'error');
+                // For large videos that fail, fallback to download
+                if (err?.message?.includes('share') || err?.message?.includes('File')) {
+                    try {
+                        const res2 = await fetch(`/api/files/${file.id}/stream`);
+                        const blob2 = await res2.blob();
+                        const url = URL.createObjectURL(blob2);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = file.name;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        showToast('Vídeo muito grande para compartilhar direto. Baixado para enviar manualmente.', 'info');
+                    } catch {
+                        showToast('Erro ao compartilhar', 'error');
+                    }
+                } else {
+                    showToast('Erro ao compartilhar', 'error');
+                }
             }
         } finally {
             setSharing(null);
         }
     };
+
 
     const getFileIcon = (mimeType: string | null) => {
         const mime = mimeType || '';
@@ -507,25 +542,67 @@ export default function PortalProjectsPage() {
                                                                                             <span>•</span>
                                                                                             {formatSize(file.sizeBytes)}
                                                                                         </div>
-                                                                                        <div style={{ display: 'flex', gap: 8 }}>
+                                                                                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                                                                                             {(file.mimeType?.startsWith('image/') || file.mimeType?.startsWith('video/')) && (
-                                                                                                <button
-                                                                                                    className="btn btn-sm"
-                                                                                                    disabled={sharing === file.id}
-                                                                                                    onClick={(e) => { e.stopPropagation(); handleShare(file); }}
-                                                                                                    style={{
-                                                                                                        display: 'flex', alignItems: 'center', gap: 6, padding: '6px 16px',
-                                                                                                        background: 'linear-gradient(135deg, #833AB4, #C13584, #E1306C)',
-                                                                                                        color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer',
-                                                                                                        fontSize: '0.8rem', fontWeight: 600,
-                                                                                                    }}
-                                                                                                >
-                                                                                                    {sharing === file.id
-                                                                                                        ? <Loader2 size={14} className="animate-spin" />
-                                                                                                        : <Share2 size={14} />
-                                                                                                    }
-                                                                                                    Compartilhar
-                                                                                                </button>
+                                                                                                <>
+                                                                                                    <button
+                                                                                                        className="btn btn-sm"
+                                                                                                        onClick={(e) => {
+                                                                                                            e.stopPropagation();
+                                                                                                            setAiCaption('');
+                                                                                                            setAiCopied(false);
+                                                                                                            setAiModal({
+                                                                                                                fileId: file.id,
+                                                                                                                fileName: file.name,
+                                                                                                                projectName: project.name,
+                                                                                                                clientName: project.client?.name || '',
+                                                                                                                fileKind: file.kind,
+                                                                                                            });
+                                                                                                            // Auto-generate
+                                                                                                            setAiLoading(true);
+                                                                                                            fetch('/api/portal/ai/caption', {
+                                                                                                                method: 'POST',
+                                                                                                                headers: { 'Content-Type': 'application/json' },
+                                                                                                                body: JSON.stringify({
+                                                                                                                    fileName: file.name,
+                                                                                                                    projectName: project.name,
+                                                                                                                    clientName: project.client?.name || '',
+                                                                                                                    fileKind: file.kind,
+                                                                                                                }),
+                                                                                                            })
+                                                                                                                .then(r => r.json())
+                                                                                                                .then(d => setAiCaption(d.data?.caption || 'Erro ao gerar legenda.'))
+                                                                                                                .catch(() => setAiCaption('Erro ao gerar legenda.'))
+                                                                                                                .finally(() => setAiLoading(false));
+                                                                                                        }}
+                                                                                                        style={{
+                                                                                                            display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px',
+                                                                                                            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                                                                                            color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer',
+                                                                                                            fontSize: '0.78rem', fontWeight: 600,
+                                                                                                        }}
+                                                                                                    >
+                                                                                                        <Wand2 size={13} />
+                                                                                                        Copy IA
+                                                                                                    </button>
+                                                                                                    <button
+                                                                                                        className="btn btn-sm"
+                                                                                                        disabled={sharing === file.id}
+                                                                                                        onClick={(e) => { e.stopPropagation(); handleShare(file); }}
+                                                                                                        style={{
+                                                                                                            display: 'flex', alignItems: 'center', gap: 6, padding: '6px 16px',
+                                                                                                            background: 'linear-gradient(135deg, #833AB4, #C13584, #E1306C)',
+                                                                                                            color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer',
+                                                                                                            fontSize: '0.8rem', fontWeight: 600,
+                                                                                                        }}
+                                                                                                    >
+                                                                                                        {sharing === file.id
+                                                                                                            ? <Loader2 size={14} className="animate-spin" />
+                                                                                                            : <Share2 size={14} />
+                                                                                                        }
+                                                                                                        Compartilhar
+                                                                                                    </button>
+                                                                                                </>
                                                                                             )}
                                                                                             <button
                                                                                                 className="btn btn-primary btn-sm"
@@ -565,6 +642,99 @@ export default function PortalProjectsPage() {
                     </div>
                 )}
             </div>
+
+            {/* AI Caption Modal */}
+            {aiModal && (
+                <div
+                    style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+                    onClick={() => setAiModal(null)}
+                >
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                            background: 'var(--color-bg)', borderRadius: 16, padding: 24,
+                            maxWidth: 480, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+                            position: 'relative',
+                        }}
+                    >
+                        <button
+                            onClick={() => setAiModal(null)}
+                            style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex' }}
+                        >
+                            <X size={18} />
+                        </button>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                            <div style={{
+                                width: 40, height: 40, borderRadius: 10,
+                                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                                <Wand2 size={20} style={{ color: '#fff' }} />
+                            </div>
+                            <div>
+                                <div style={{ fontWeight: 700, fontSize: '1rem' }}>Copy IA</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Legenda gerada por inteligência artificial</div>
+                            </div>
+                        </div>
+
+                        {aiLoading ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: 30 }}>
+                                <Loader2 size={28} className="animate-spin" style={{ color: 'var(--color-primary)' }} />
+                                <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Gerando legenda...</span>
+                            </div>
+                        ) : (
+                            <>
+                                <div style={{
+                                    background: 'var(--color-bg-secondary)', borderRadius: 10, padding: 16,
+                                    fontSize: '0.88rem', lineHeight: 1.6, color: 'var(--color-text)',
+                                    border: '1px solid var(--color-border)', marginBottom: 14,
+                                    maxHeight: 240, overflowY: 'auto' as const, whiteSpace: 'pre-wrap' as const,
+                                }}>
+                                    {aiCaption}
+                                </div>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(aiCaption);
+                                            setAiCopied(true);
+                                            setTimeout(() => setAiCopied(false), 2000);
+                                        }}
+                                        className="btn btn-primary"
+                                        style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'center' }}
+                                    >
+                                        {aiCopied ? <><Check size={15} /> Copiado!</> : <><Copy size={15} /> Copiar Legenda</>}
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setAiCaption('');
+                                            setAiLoading(true);
+                                            fetch('/api/portal/ai/caption', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({
+                                                    fileName: aiModal!.fileName,
+                                                    projectName: aiModal!.projectName,
+                                                    clientName: aiModal!.clientName,
+                                                    fileKind: aiModal!.fileKind,
+                                                }),
+                                            })
+                                                .then(r => r.json())
+                                                .then(d => setAiCaption(d.data?.caption || 'Erro ao gerar legenda.'))
+                                                .catch(() => setAiCaption('Erro ao gerar legenda.'))
+                                                .finally(() => setAiLoading(false));
+                                        }}
+                                        className="btn btn-secondary"
+                                        style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                                    >
+                                        <Wand2 size={14} /> Nova
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -191,7 +191,7 @@ export default function ProjectDetailPage() {
     const filterFiles = (files: FileItem[]) => {
         const { from, to } = getDateRange();
         return files.filter(f => {
-            const d = new Date(f.createdAt);
+            const d = f.publishedAt ? new Date(f.publishedAt) : new Date(f.createdAt);
             if (from && d < from) return false;
             if (to && d > to) return false;
             if (searchText) {
@@ -207,7 +207,8 @@ export default function ProjectDetailPage() {
     // Group filtered files by date
     const groupedFiles: Record<string, FileItem[]> = {};
     for (const file of filteredFiles) {
-        const key = new Date(file.createdAt).toLocaleDateString('pt-BR');
+        const dateSource = file.publishedAt || file.createdAt;
+        const key = new Date(dateSource).toLocaleDateString('pt-BR');
         if (!groupedFiles[key]) groupedFiles[key] = [];
         groupedFiles[key].push(file);
     }
@@ -402,7 +403,7 @@ export default function ProjectDetailPage() {
                                                             {file.name}
                                                         </div>
                                                         <div className="text-xs text-muted" style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
-                                                            <Clock size={12} /> {formatTime(file.createdAt)}
+                                                            <Clock size={12} /> {formatTime(file.publishedAt || file.createdAt)}
                                                             <span>•</span>
                                                             {formatSize(file.sizeBytes)}
                                                             <span>•</span>

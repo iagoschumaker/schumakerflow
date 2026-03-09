@@ -53,6 +53,7 @@ export const POST = withAuth(
             const projectId = formData.get('projectId') as string;
             const kind = formData.get('kind') as string;
             const isVisible = formData.get('isVisible') === 'true';
+            const fileLastModified = formData.get('fileLastModified') as string | null;
 
             if (!file || !projectId || !kind) {
                 return apiError('Missing required fields: file, projectId, kind', 400);
@@ -190,6 +191,11 @@ export const POST = withAuth(
                 driveFileId = `mock_file_${Date.now()}`;
             }
 
+            // Use video's modification date if available, otherwise current date
+            const publishedDate = fileLastModified && !isNaN(Number(fileLastModified))
+                ? new Date(Number(fileLastModified))
+                : new Date();
+
             const fileRecord = await prisma.file.create({
                 data: {
                     tenantId: ctx.tenantId,
@@ -202,7 +208,7 @@ export const POST = withAuth(
                     sizeBytes: BigInt(sizeBytes),
                     md5Hash,
                     isVisible,
-                    publishedAt: isVisible ? new Date() : null,
+                    publishedAt: publishedDate,
                 },
             });
 

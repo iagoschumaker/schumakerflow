@@ -18,7 +18,7 @@ interface UploadItem {
 export default function FilesPage() {
     const [projects, setProjects] = useState<Project[]>([]);
     const [loading, setLoading] = useState(true);
-    const [uploadForm, setUploadForm] = useState({ projectId: '', kind: 'FINAL', isVisible: false });
+    const [uploadForm, setUploadForm] = useState({ projectId: '', kind: 'FINAL', isVisible: true });
     const [uploadFiles, setUploadFiles] = useState<UploadItem[]>([]);
     const [uploading, setUploading] = useState(false);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -80,6 +80,7 @@ export default function FilesPage() {
                 formData.append('projectId', projectId);
                 formData.append('kind', kind);
                 formData.append('isVisible', String(isVisible));
+                formData.append('fileLastModified', String(fileItem.file.lastModified));
 
                 const xhr = new XMLHttpRequest();
                 let lastLoaded = 0;
