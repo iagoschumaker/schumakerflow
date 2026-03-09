@@ -535,29 +535,35 @@ model AuditLog {
 model PlanTemplate {
   id              String   @id @default(uuid())
   name            String   @unique
+  slug            String?  @unique
   displayName     String   @default("")
+  description     String?
   maxProjects     Int?
   maxUsers        Int?
   featureFinance  Boolean  @default(true)
   price           Float    @default(0)
+  sortOrder       Int      @default(0)
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
 
 model ShareLink {
-  id        String    @id @default(uuid())
-  token     String    @unique
-  fileId    String?
-  tenantId  String?
-  expiresAt DateTime?
-  password  String?
-  maxViews  Int?
-  viewCount Int       @default(0)
-  isActive  Boolean   @default(true)
-  createdAt DateTime  @default(now())
+  id          String    @id @default(uuid())
+  token       String    @unique
+  fileId      String?
+  projectId   String?
+  tenantId    String?
+  label       String?
+  createdById String?
+  expiresAt   DateTime?
+  password    String?
+  maxViews    Int?
+  viewCount   Int       @default(0)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
 
-  file      File?     @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  file        File?     @relation(fields: [fileId], references: [id], onDelete: Cascade)
 
   @@index([token])
   @@index([fileId])
