@@ -5,9 +5,10 @@ import { useToast } from '@/components/Toast';
 import {
     FileText, ClipboardList, CreditCard, Search, X, Plus,
     Loader2, DollarSign, Receipt, Pencil, Trash2, Check, Ban,
-    Calendar, ArrowRight, User, MessageCircle, QrCode, Copy
+    Calendar, ArrowRight, User, MessageCircle, QrCode, Copy, FileDown
 } from 'lucide-react';
 import FloatingActionButton from '@/components/FloatingActionButton';
+import { generateBillingPdf, generateReceiptPdf } from '@/lib/finance/pdf';
 
 interface Invoice {
     id: string;
@@ -19,6 +20,7 @@ interface Invoice {
     notes: string | null;
     client: { name: string; phone: string | null };
     contract?: { name: string } | null;
+    items?: { description: string; quantity: number; unitPrice: string; totalAmount: string; type: string }[];
     _count: { payments: number };
 }
 
@@ -526,6 +528,10 @@ export default function FinancePage() {
                                         {(inv.status === 'PENDING' || inv.status === 'OVERDUE') && (
                                             <button className="btn btn-sm" onClick={() => handleCancelInvoice(inv.id)} style={{ padding: '5px 8px', background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }} title="Cancelar"><Ban size={13} /></button>
                                         )}
+                                        <button className="btn btn-sm" onClick={() => generateBillingPdf([inv], pixSettings)} style={{ padding: '5px 8px', background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }} title="PDF Cobrança"><FileDown size={13} /></button>
+                                        {inv.status === 'PAID' && (
+                                            <button className="btn btn-sm" onClick={() => generateReceiptPdf([inv], pixSettings)} style={{ padding: '5px 8px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e' }} title="PDF Comprovante"><FileDown size={13} /></button>
+                                        )}
                                         <button className="btn btn-secondary btn-sm" onClick={() => openEditInvoice(inv)} style={{ padding: '5px 8px' }} title="Editar"><Pencil size={13} /></button>
                                         <button className="btn btn-danger btn-sm" onClick={() => handleDeleteInvoice(inv.id)} style={{ padding: '5px 8px' }} title="Excluir"><Trash2 size={13} /></button>
                                         {(inv.status === 'PENDING' || inv.status === 'OVERDUE') && (
@@ -660,6 +666,13 @@ export default function FinancePage() {
                             >
                                 {qrLoading ? <Loader2 size={14} className="animate-spin" /> : <MessageCircle size={14} />}
                                 Enviar {selInvs.length > 1 ? 'juntas' : ''} via WhatsApp
+                            </button>
+                            <button
+                                className="btn btn-sm"
+                                style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}
+                                onClick={() => generateBillingPdf(selInvs, pixSettings)}
+                            >
+                                <FileDown size={14} /> PDF
                             </button>
                             <button
                                 className="btn btn-secondary btn-sm"
@@ -919,6 +932,13 @@ export default function FinancePage() {
                                 }}
                             >
                                 <QrCode size={16} /> 3. Baixar QR Code (PNG)
+                            </button>
+                            <button
+                                className="btn"
+                                style={{ width: '100%', background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--color-text)' }}
+                                onClick={() => generateBillingPdf(qrModal.invoices, pixSettings)}
+                            >
+                                <FileDown size={16} /> 4. Baixar PDF da Cobrança
                             </button>
                             <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', textAlign: 'center', marginTop: 4 }}>
                                 Envie a cobrança, depois o código copia e cola, e por último o QR Code como imagem
