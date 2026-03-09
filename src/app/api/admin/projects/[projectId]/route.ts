@@ -6,7 +6,7 @@ import { z } from 'zod';
 const updateSchema = z.object({
     name: z.string().min(1).optional(),
     description: z.string().optional(),
-    status: z.enum(['DRAFT', 'IN_PROGRESS', 'IN_REVIEW', 'APPROVED', 'COMPLETED', 'CANCELLED']).optional(),
+    status: z.enum(['DRAFT', 'IN_PRODUCTION', 'IN_REVIEW', 'DELIVERED', 'ARCHIVED']).optional(),
 });
 
 // GET /api/admin/projects/[projectId]
