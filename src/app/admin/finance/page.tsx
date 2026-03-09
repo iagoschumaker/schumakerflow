@@ -8,7 +8,7 @@ import {
     Calendar, ArrowRight, User, MessageCircle, QrCode, Copy, FileDown
 } from 'lucide-react';
 import FloatingActionButton from '@/components/FloatingActionButton';
-import { generateBillingPdf, generateReceiptPdf } from '@/lib/finance/pdf';
+import { generateBillingPdf, generateBillingPdfWithQr, generateReceiptPdf } from '@/lib/finance/pdf';
 
 interface Invoice {
     id: string;
@@ -528,7 +528,7 @@ export default function FinancePage() {
                                         {(inv.status === 'PENDING' || inv.status === 'OVERDUE') && (
                                             <button className="btn btn-sm" onClick={() => handleCancelInvoice(inv.id)} style={{ padding: '5px 8px', background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }} title="Cancelar"><Ban size={13} /></button>
                                         )}
-                                        <button className="btn btn-sm" onClick={(e) => { e.stopPropagation(); generateBillingPdf([inv], pixSettings); }} style={{ padding: '4px 10px', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.4)', color: '#6366f1', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.7rem', fontWeight: 600 }} title="Baixar PDF da Fatura"><FileDown size={12} /> PDF</button>
+                                        <button className="btn btn-sm" onClick={(e) => { e.stopPropagation(); generateBillingPdfWithQr([inv], pixSettings); }} style={{ padding: '4px 10px', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.4)', color: '#6366f1', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.7rem', fontWeight: 600 }} title="Baixar PDF da Fatura"><FileDown size={12} /> PDF</button>
                                         {inv.status === 'PAID' && (
                                             <button className="btn btn-sm" onClick={(e) => { e.stopPropagation(); generateReceiptPdf([inv], pixSettings); }} style={{ padding: '4px 10px', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)', color: '#22c55e', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.7rem', fontWeight: 600 }} title="Baixar Comprovante"><FileDown size={12} /> Recibo</button>
                                         )}
@@ -670,7 +670,7 @@ export default function FinancePage() {
                             <button
                                 className="btn btn-sm"
                                 style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}
-                                onClick={() => generateBillingPdf(selInvs, pixSettings)}
+                                onClick={() => generateBillingPdfWithQr(selInvs, pixSettings)}
                             >
                                 <FileDown size={14} /> PDF
                             </button>
