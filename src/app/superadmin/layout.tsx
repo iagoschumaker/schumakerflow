@@ -57,8 +57,8 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                 {/* Sidebar */}
                 <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
                     <div className="sidebar-brand">
-                        <h1><img src="/icons/favicon-512-white.png" alt="SF" style={{ width: 24, height: 24, display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />SuperAdmin</h1>
-                        <span className="brand-sub">Schumaker Flow</span>
+                        <h1><img src="/icons/favicon-512-white.png" alt="SF" style={{ width: 32, height: 32, display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />SFlow</h1>
+                        <span className="brand-sub">SuperAdmin</span>
                     </div>
 
                     <nav className="sidebar-nav">

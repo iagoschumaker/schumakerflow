@@ -9,7 +9,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Schumaker Flow — Client, Media & Finance Management",
+  title: "SFlow — Gestão de Mídia",
   description: "Plataforma profissional para gestão de clientes, mídia e financeiro. Multi-tenant SaaS.",
   manifest: "/manifest.json",
   icons: {

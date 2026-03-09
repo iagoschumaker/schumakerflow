@@ -100,7 +100,7 @@ export default function SelectContextPage() {
             <div className="login-card" style={{ maxWidth: 460 }}>
                 <div className="login-logo">
                     <img src="/icons/favicon-512-white.png" alt="Schumaker Flow" style={{ width: 64, height: 64, marginBottom: '0.5rem' }} />
-                    <h1>Schumaker Flow</h1>
+                    <h1>SFlow</h1>
                     <p style={{ marginTop: 4 }}>Olá, <strong>{userName}</strong></p>
                 </div>
 
