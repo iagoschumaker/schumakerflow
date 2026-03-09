@@ -1,3 +1,8 @@
+// Global BigInt JSON serializer — required for Prisma BigInt fields
+(BigInt.prototype as any).toJSON = function () {
+  return Number(this);
+};
+
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
