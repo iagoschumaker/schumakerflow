@@ -54,7 +54,9 @@ export default function RegisterPage() {
     return (
         <div className="login-container">
             <div className="login-banner">
-                <img src="/icons/login-banner.png" alt="SFlow" />
+                <img src="/icons/favicon-512-white.png" alt="SFlow" />
+                <h2>SFlow</h2>
+                <p>Plataforma completa para gestão de clientes, projetos, mídia e financeiro</p>
             </div>
             <div className="login-side">
                 <div className="login-card">
