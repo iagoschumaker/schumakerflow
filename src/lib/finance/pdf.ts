@@ -34,19 +34,14 @@ interface PdfOptions {
     pixPayload?: string;
 }
 
-// ── Layout constants ──
-const L = 20;   // left margin
-const R = 190;  // right margin
-const W = R - L; // content width
-
-// ── Colors ──
-const D = [17, 20, 39] as const;
-const T = [40, 42, 55] as const;
-const M = [130, 135, 155] as const;
-const B = [215, 218, 228] as const;
-const BG = [245, 246, 250] as const;
-const WH = [255, 255, 255] as const;
-const GR = [34, 197, 94] as const;
+// ── Colors (all black/gray based) ──
+const D = [17, 20, 39] as const;      // dark
+const T = [40, 42, 55] as const;      // text
+const M = [130, 135, 155] as const;   // muted
+const B = [215, 218, 228] as const;   // border
+const BG = [245, 246, 250] as const;  // bg
+const W = [255, 255, 255] as const;   // white
+const GR = [34, 197, 94] as const;    // green (receipt only)
 
 function fmt(v: number | string): string {
     return `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
@@ -63,28 +58,35 @@ function fMonth(m: string | null): string {
 
 // ── Header ──
 function drawHeader(doc: jsPDF, title: string) {
+    // Black left accent bar
     doc.setFillColor(...D);
     doc.rect(0, 0, 5, 297, 'F');
 
-    try { doc.addImage(SFLOW_LOGO_BASE64, 'PNG', L, 10, 16, 16); } catch { /* */ }
+    // Logo
+    try {
+        doc.addImage(SFLOW_LOGO_BASE64, 'PNG', 14, 10, 16, 16);
+    } catch { /* skip */ }
 
+    // Brand
     doc.setFontSize(13);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...D);
-    doc.text('SFlow', L + 20, 18);
+    doc.text('SFlow', 34, 18);
     doc.setFontSize(6.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...M);
-    doc.text('Gestão de Mídia', L + 20, 23);
+    doc.text('Gestão de Mídia', 34, 23);
 
+    // Title - small, right-aligned, uppercase
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...D);
-    doc.text(title, R, 20, { align: 'right' });
+    doc.text(title, 195, 20, { align: 'right' });
 
+    // Separator
     doc.setDrawColor(...B);
     doc.setLineWidth(0.3);
-    doc.line(L, 32, R, 32);
+    doc.line(14, 32, 195, 32);
 }
 
 // ── Footer ──
@@ -92,21 +94,21 @@ function drawFooter(doc: jsPDF) {
     const h = doc.internal.pageSize.getHeight();
     doc.setDrawColor(...B);
     doc.setLineWidth(0.2);
-    doc.line(L, h - 16, R, h - 16);
+    doc.line(14, h - 16, 195, h - 16);
     doc.setFontSize(6);
     doc.setTextColor(...M);
     doc.text('Gerado automaticamente por SFlow — schumaker.com.br', 105, h - 10, { align: 'center' });
     doc.text(`Emissão: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, 105, h - 6, { align: 'center' });
 }
 
-// ── Section label ──
-function lbl(doc: jsPDF, text: string, y: number, color: readonly [number, number, number] = D) {
+// ── Section label with bar ──
+function label(doc: jsPDF, text: string, y: number, color: readonly [number, number, number] = D) {
     doc.setFillColor(...color);
-    doc.roundedRect(L, y, 2.5, 9, 1, 1, 'F');
+    doc.roundedRect(14, y, 2.5, 9, 1, 1, 'F');
     doc.setFontSize(7);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...color);
-    doc.text(text.toUpperCase(), L + 6, y + 6.5);
+    doc.text(text.toUpperCase(), 21, y + 6.5);
     doc.setTextColor(...T);
     return y + 12;
 }
@@ -125,63 +127,55 @@ export function generateBillingPdf(invoices: InvoiceForPdf[], pixInfo?: PixInfo 
 
     // ── Emitido por ──
     if (pixInfo) {
-        y = lbl(doc, 'Emitido por', y);
+        y = label(doc, 'Emitido por', y);
         doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
-        doc.setTextColor(...T);
-        doc.text(pixInfo.pixReceiverName, L + 6, y);
+        doc.text(pixInfo.pixReceiverName, 21, y);
         y += 10;
     }
 
     // ── Cobrado de ──
-    y = lbl(doc, 'Cobrado de', y);
+    y = label(doc, 'Cobrado de', y);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...D);
-    doc.text(client?.name || '', L + 6, y);
+    doc.text(client?.name || '', 21, y);
     if (client?.phone) {
         doc.setFontSize(7.5);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(...M);
-        doc.text(client.phone, L + 6, y + 5);
+        doc.text(client.phone, 21, y + 5);
         y += 5;
     }
     y += 10;
 
-    // ── Vencimento / Contrato / Referência ──
+    // ── Vencimento row ──
     if (!isBatch) {
         const inv = invoices[0];
         doc.setFillColor(...BG);
-        doc.roundedRect(L, y, W, 14, 3, 3, 'F');
+        doc.roundedRect(14, y, 179, 14, 3, 3, 'F');
 
-        const col1 = L + 6;
-        const col2 = L + 60;
-        const col3 = L + 120;
-
-        doc.setFontSize(7);
+        doc.setFontSize(8);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(...M);
-        doc.text('Vencimento', col1, y + 5);
-        doc.setFontSize(9);
         doc.setTextColor(...D);
-        doc.text(fDate(inv.dueDate), col1, y + 11);
+        doc.text('Vencimento', 20, y + 6);
+        doc.setFontSize(10);
+        doc.text(fDate(inv.dueDate), 20, y + 12);
 
         if (inv.contract?.name) {
-            doc.setFontSize(7);
-            doc.setTextColor(...M);
-            doc.text('Contrato', col2, y + 5);
-            doc.setFontSize(9);
+            doc.setFontSize(8);
             doc.setTextColor(...D);
-            doc.text(inv.contract.name, col2, y + 11);
+            doc.text('Contrato', 85, y + 6);
+            doc.setFontSize(10);
+            doc.text(inv.contract.name, 85, y + 12);
         }
 
         if (inv.referenceMonth) {
-            doc.setFontSize(7);
-            doc.setTextColor(...M);
-            doc.text('Referência', col3, y + 5);
-            doc.setFontSize(9);
+            doc.setFontSize(8);
             doc.setTextColor(...D);
-            doc.text(fMonth(inv.referenceMonth), col3, y + 11);
+            doc.text('Referência', 150, y + 6);
+            doc.setFontSize(10);
+            doc.text(fMonth(inv.referenceMonth), 150, y + 12);
         }
 
         y += 20;
@@ -191,28 +185,28 @@ export function generateBillingPdf(invoices: InvoiceForPdf[], pixInfo?: PixInfo 
     for (const inv of invoices) {
         if (isBatch) {
             doc.setFillColor(...D);
-            doc.roundedRect(L, y, W, 8, 2, 2, 'F');
+            doc.roundedRect(14, y, 181, 8, 2, 2, 'F');
             doc.setFontSize(7);
             doc.setFont('helvetica', 'bold');
-            doc.setTextColor(...WH);
-            doc.text(inv.contract?.name || inv.notes || 'Fatura avulsa', L + 6, y + 5.5);
-            doc.text(`Venc: ${fDate(inv.dueDate)}`, L + 110, y + 5.5);
-            doc.text(fmt(inv.totalAmount), R, y + 5.5, { align: 'right' });
+            doc.setTextColor(...W);
+            doc.text(inv.contract?.name || inv.notes || 'Fatura avulsa', 20, y + 5.5);
+            doc.text(`Venc: ${fDate(inv.dueDate)}`, 130, y + 5.5);
+            doc.text(fmt(inv.totalAmount), 190, y + 5.5, { align: 'right' });
             doc.setTextColor(...T);
             y += 12;
         }
 
         if (inv.items && inv.items.length > 0) {
-            // Table header
+            // Header
             doc.setFillColor(...BG);
-            doc.rect(L, y, W, 7, 'F');
+            doc.rect(14, y, 181, 7, 'F');
             doc.setFontSize(6);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(...M);
-            doc.text('DESCRIÇÃO', L + 6, y + 5);
-            doc.text('QTD', L + 110, y + 5, { align: 'center' });
-            doc.text('UNITÁRIO', L + 145, y + 5, { align: 'right' });
-            doc.text('TOTAL', R, y + 5, { align: 'right' });
+            doc.text('DESCRIÇÃO', 20, y + 5);
+            doc.text('QTD', 130, y + 5, { align: 'center' });
+            doc.text('UNITÁRIO', 160, y + 5, { align: 'right' });
+            doc.text('TOTAL', 190, y + 5, { align: 'right' });
             y += 10;
 
             // Rows
@@ -220,15 +214,15 @@ export function generateBillingPdf(invoices: InvoiceForPdf[], pixInfo?: PixInfo 
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(...T);
             for (const item of inv.items) {
-                doc.text(item.description.substring(0, 50), L + 6, y);
-                doc.text(String(item.quantity), L + 110, y, { align: 'center' });
-                doc.text(fmt(item.unitPrice), L + 145, y, { align: 'right' });
+                doc.text(item.description.substring(0, 55), 20, y);
+                doc.text(String(item.quantity), 130, y, { align: 'center' });
+                doc.text(fmt(item.unitPrice), 160, y, { align: 'right' });
                 doc.setFont('helvetica', 'bold');
-                doc.text(fmt(item.totalAmount), R, y, { align: 'right' });
+                doc.text(fmt(item.totalAmount), 190, y, { align: 'right' });
                 doc.setFont('helvetica', 'normal');
                 doc.setDrawColor(238, 238, 244);
                 doc.setLineWidth(0.15);
-                doc.line(L + 6, y + 2.5, R, y + 2.5);
+                doc.line(20, y + 2.5, 190, y + 2.5);
                 y += 7;
             }
             y += 3;
@@ -238,79 +232,83 @@ export function generateBillingPdf(invoices: InvoiceForPdf[], pixInfo?: PixInfo 
     // ── Total ──
     doc.setDrawColor(...D);
     doc.setLineWidth(0.5);
-    doc.line(L + 100, y, R, y);
+    doc.line(125, y, 195, y);
     y += 7;
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...M);
-    doc.text('Total a pagar', R - 50, y, { align: 'right' });
+    doc.text('Total a pagar', 147, y, { align: 'right' });
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...D);
-    doc.text(fmt(total), R, y, { align: 'right' });
+    doc.text(fmt(total), 190, y, { align: 'right' });
     y += 14;
 
     // ── QR Code + PIX ──
     if (options?.qrCodeDataUrl || pixInfo) {
-        y = lbl(doc, 'Pagamento PIX', y);
+        y = label(doc, 'Pagamento PIX', y);
 
         if (options?.qrCodeDataUrl) {
+            // QR code on the left
             const qrSize = 42;
-            try { doc.addImage(options.qrCodeDataUrl, 'PNG', L, y, qrSize, qrSize); } catch { /* */ }
+            try {
+                doc.addImage(options.qrCodeDataUrl, 'PNG', 14, y, qrSize, qrSize);
+            } catch { /* skip */ }
 
-            const rx = L + qrSize + 8;
+            // PIX info on the right of QR
+            const rx = 62;
             doc.setFontSize(7);
             doc.setTextColor(...M);
             doc.text('Escaneie o QR Code ou copie o código abaixo', rx, y + 5);
 
             if (pixInfo) {
-                let ry = y + 14;
                 doc.setFontSize(8);
                 doc.setTextColor(...T);
-
+                let ry = y + 14;
                 doc.setFont('helvetica', 'bold');
                 doc.text('Chave:', rx, ry);
                 doc.setFont('helvetica', 'normal');
-                doc.text(pixInfo.pixKey, rx + 18, ry);
+                doc.text(pixInfo.pixKey, rx + 17, ry);
                 ry += 6;
-
                 doc.setFont('helvetica', 'bold');
                 doc.text('Tipo:', rx, ry);
                 doc.setFont('helvetica', 'normal');
-                doc.text(pixInfo.pixKeyType, rx + 14, ry);
+                doc.text(pixInfo.pixKeyType, rx + 13, ry);
                 ry += 6;
-
                 doc.setFont('helvetica', 'bold');
                 doc.text('Nome:', rx, ry);
                 doc.setFont('helvetica', 'normal');
-                doc.text(pixInfo.pixReceiverName, rx + 17, ry);
+                doc.text(pixInfo.pixReceiverName, rx + 16, ry);
             }
 
             y += qrSize + 4;
 
+            // Copia e Cola
             if (options.pixPayload) {
                 doc.setFillColor(...BG);
-                doc.roundedRect(L, y, W, 10, 2, 2, 'F');
+                doc.roundedRect(14, y, 181, 10, 2, 2, 'F');
                 doc.setFontSize(4.5);
                 doc.setFont('helvetica', 'normal');
                 doc.setTextColor(...M);
-                doc.text(options.pixPayload.substring(0, 160), L + 4, y + 6);
+                doc.text(options.pixPayload.substring(0, 160), 18, y + 6);
                 y += 14;
             }
         } else if (pixInfo) {
+            // Just PIX text info (no QR)
             doc.setFontSize(8);
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(...T);
-            doc.text(`Chave: ${pixInfo.pixKey}  ·  Tipo: ${pixInfo.pixKeyType}  ·  Nome: ${pixInfo.pixReceiverName}`, L + 6, y);
+            doc.text(`Chave: ${pixInfo.pixKey}  ·  Tipo: ${pixInfo.pixKeyType}  ·  Nome: ${pixInfo.pixReceiverName}`, 21, y);
             y += 8;
         }
     }
 
+    // Notes
     if (!isBatch && invoices[0]?.notes) {
         doc.setFontSize(7);
         doc.setFont('helvetica', 'italic');
         doc.setTextColor(...M);
-        doc.text(`Obs: ${invoices[0].notes}`, L + 6, y + 4);
+        doc.text(`Obs: ${invoices[0].notes}`, 21, y + 4);
     }
 
     drawFooter(doc);
@@ -333,63 +331,63 @@ export function generateReceiptPdf(invoices: InvoiceForPdf[], pixInfo?: PixInfo 
 
     // ── Recebido por ──
     if (pixInfo) {
-        y = lbl(doc, 'Recebido por', y);
+        y = label(doc, 'Recebido por', y);
         doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(...T);
-        doc.text(pixInfo.pixReceiverName, L + 6, y);
+        doc.text(pixInfo.pixReceiverName, 21, y);
         y += 10;
     }
 
     // ── PAGO badge ──
     doc.setFillColor(...GR);
-    doc.roundedRect(L, y, 30, 10, 3, 3, 'F');
-    doc.setTextColor(...WH);
+    doc.roundedRect(14, y, 30, 10, 3, 3, 'F');
+    doc.setTextColor(...W);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    doc.text('PAGO', L + 15, y + 7, { align: 'center' });
+    doc.text('PAGO', 29, y + 7, { align: 'center' });
 
     if (invoices[0]?.paidAt) {
         doc.setFontSize(8);
         doc.setTextColor(...M);
         doc.setFont('helvetica', 'normal');
-        doc.text(`em ${fDate(invoices[0].paidAt)}`, L + 34, y + 7);
+        doc.text(`em ${fDate(invoices[0].paidAt)}`, 48, y + 7);
     }
     doc.setTextColor(...T);
     y += 16;
 
     // ── Pagador ──
-    y = lbl(doc, 'Pagador', y);
+    y = label(doc, 'Pagador', y);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...D);
-    doc.text(client?.name || '', L + 6, y);
+    doc.text(client?.name || '', 21, y);
     y += 8;
 
     // ── Valor ──
     doc.setFillColor(...BG);
-    doc.roundedRect(L, y, W, 16, 3, 3, 'F');
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'bold');
+    doc.roundedRect(14, y, 179, 16, 3, 3, 'F');
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
     doc.setTextColor(...M);
-    doc.text('Valor pago', L + 6, y + 5);
+    doc.text('Valor pago', 20, y + 6);
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...GR);
-    doc.text(fmt(total), L + 6, y + 14);
+    doc.text(fmt(total), 20, y + 14);
     doc.setTextColor(...T);
     y += 22;
 
-    // ── Items ──
+    // ── Details ──
     for (const inv of invoices) {
         if (isBatch) {
             doc.setFillColor(...BG);
-            doc.roundedRect(L, y, W, 8, 2, 2, 'F');
+            doc.roundedRect(14, y, 181, 8, 2, 2, 'F');
             doc.setFontSize(7.5);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(...T);
-            doc.text(inv.contract?.name || inv.notes || 'Fatura avulsa', L + 6, y + 5.5);
-            doc.text(fmt(inv.totalAmount), R, y + 5.5, { align: 'right' });
+            doc.text(inv.contract?.name || inv.notes || 'Fatura avulsa', 20, y + 5.5);
+            doc.text(fmt(inv.totalAmount), 190, y + 5.5, { align: 'right' });
             y += 11;
         }
 
@@ -398,9 +396,9 @@ export function generateReceiptPdf(invoices: InvoiceForPdf[], pixInfo?: PixInfo 
             doc.setFont('helvetica', 'normal');
             for (const item of inv.items) {
                 doc.setTextColor(...M);
-                doc.text(`·  ${item.description.substring(0, 50)}`, L + 6, y);
+                doc.text(`·  ${item.description.substring(0, 50)}`, 24, y);
                 doc.setTextColor(...T);
-                doc.text(fmt(item.totalAmount), R, y, { align: 'right' });
+                doc.text(fmt(item.totalAmount), 190, y, { align: 'right' });
                 y += 6;
             }
             y += 2;
@@ -410,25 +408,25 @@ export function generateReceiptPdf(invoices: InvoiceForPdf[], pixInfo?: PixInfo 
     // ── Total ──
     doc.setDrawColor(...D);
     doc.setLineWidth(0.5);
-    doc.line(L + 100, y, R, y);
+    doc.line(125, y, 195, y);
     y += 6;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...D);
-    doc.text('Total:', R - 50, y, { align: 'right' });
+    doc.text('Total:', 150, y, { align: 'right' });
     doc.setTextColor(...GR);
-    doc.text(fmt(total), R, y, { align: 'right' });
+    doc.text(fmt(total), 190, y, { align: 'right' });
     y += 16;
 
     // ── Confirmation ──
     doc.setFillColor(235, 255, 242);
-    doc.roundedRect(L, y, W, 12, 3, 3, 'F');
+    doc.roundedRect(14, y, 181, 12, 3, 3, 'F');
     doc.setFillColor(...GR);
-    doc.roundedRect(L, y, 2.5, 12, 1, 1, 'F');
+    doc.roundedRect(14, y, 2.5, 12, 1, 1, 'F');
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(GR[0], GR[1], GR[2]);
-    doc.text('Pagamento confirmado. Este documento serve como comprovante de quitação.', L + 8, y + 8);
+    doc.text('Pagamento confirmado. Este documento serve como comprovante de quitação.', 24, y + 8);
 
     drawFooter(doc);
 
@@ -437,10 +435,13 @@ export function generateReceiptPdf(invoices: InvoiceForPdf[], pixInfo?: PixInfo 
 }
 
 // ==========================================
-// Auto QR helper
+// Helper: generate billing PDF with auto QR
 // ==========================================
 export async function generateBillingPdfWithQr(invoices: InvoiceForPdf[], pixInfo?: PixInfo | null) {
-    if (!pixInfo) { generateBillingPdf(invoices, pixInfo); return; }
+    if (!pixInfo) {
+        generateBillingPdf(invoices, pixInfo);
+        return;
+    }
 
     const total = invoices.reduce((s, i) => s + Number(i.totalAmount), 0);
     const clientName = invoices[0]?.client?.name || 'Cliente';
@@ -453,10 +454,14 @@ export async function generateBillingPdfWithQr(invoices: InvoiceForPdf[], pixInf
         });
         if (res.ok) {
             const d = await res.json();
-            generateBillingPdf(invoices, pixInfo, { qrCodeDataUrl: d.data.qrDataUrl, pixPayload: d.data.payload });
+            generateBillingPdf(invoices, pixInfo, {
+                qrCodeDataUrl: d.data.qrDataUrl,
+                pixPayload: d.data.payload,
+            });
             return;
         }
-    } catch { /* fallback */ }
+    } catch { /* fallback without QR */ }
 
+    // Fallback: generate without QR
     generateBillingPdf(invoices, pixInfo);
 }
