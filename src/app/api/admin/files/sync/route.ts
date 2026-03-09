@@ -59,13 +59,17 @@ export const POST = withAuth(
                     do {
                         const res = await drive.files.list({
                             q: `'${folderId}' in parents and trashed = false and mimeType != 'application/vnd.google-apps.folder'`,
-                            fields: 'nextPageToken, files(id, name, mimeType, size, md5Checksum)',
+                            fields: 'nextPageToken, files(id, name, mimeType, size, md5Checksum, modifiedTime, createdTime)',
                             pageSize: 100,
                             pageToken,
                         });
 
                         for (const file of res.data.files || []) {
                             if (!file.id || existingDriveIds.has(file.id)) continue;
+
+                            // Use the Drive file's modifiedTime as publishedAt
+                            const fileDate = file.modifiedTime ? new Date(file.modifiedTime)
+                                : file.createdTime ? new Date(file.createdTime) : new Date();
 
                             // This file exists in Drive but not in DB — import it
                             await prisma.file.create({
@@ -79,8 +83,8 @@ export const POST = withAuth(
                                     mimeType: file.mimeType || null,
                                     sizeBytes: file.size ? BigInt(file.size) : null,
                                     md5Hash: file.md5Checksum || null,
-                                    isVisible: false,
-                                    publishedAt: null,
+                                    isVisible: true,
+                                    publishedAt: fileDate,
                                 },
                             });
 
