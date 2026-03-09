@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import {
     FolderKanban, Sparkles, CheckCircle, Download, Loader2,
     Film, Image, FileText, FileSpreadsheet, File, Clock, Calendar,
-    ChevronDown, ChevronUp, Search, Filter, X, Share2, Wand2, Copy, Check
+    ChevronDown, ChevronUp, Search, Filter, X, Share2, Wand2, Copy, Check, Send, MessageCircle
 } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 
@@ -51,10 +51,11 @@ export default function PortalProjectsPage() {
     const [statusFilter, setStatusFilter] = useState('ALL');
     const [searchText, setSearchText] = useState('');
     const [filterPreset, setFilterPreset] = useState<FilterPreset>('all');
-    const [aiModal, setAiModal] = useState<{ fileId: string; fileName: string; projectName: string; clientName: string; fileKind: string } | null>(null);
-    const [aiCaption, setAiCaption] = useState('');
-    const [aiLoading, setAiLoading] = useState(false);
-    const [aiCopied, setAiCopied] = useState(false);
+    const [aiChat, setAiChat] = useState<{ fileId: string; fileName: string; projectName: string; clientName: string; fileKind: string } | null>(null);
+    const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'model'; text: string }[]>([]);
+    const [chatInput, setChatInput] = useState('');
+    const [chatLoading, setChatLoading] = useState(false);
+    const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
 
     const loadData = async () => {
         setLoading(true);
@@ -549,31 +550,16 @@ export default function PortalProjectsPage() {
                                                                                                         className="btn btn-sm"
                                                                                                         onClick={(e) => {
                                                                                                             e.stopPropagation();
-                                                                                                            setAiCaption('');
-                                                                                                            setAiCopied(false);
-                                                                                                            setAiModal({
+                                                                                                            setChatMessages([]);
+                                                                                                            setChatInput('');
+                                                                                                            setCopiedIdx(null);
+                                                                                                            setAiChat({
                                                                                                                 fileId: file.id,
                                                                                                                 fileName: file.name,
                                                                                                                 projectName: project.name,
                                                                                                                 clientName: project.client?.name || '',
                                                                                                                 fileKind: file.kind,
                                                                                                             });
-                                                                                                            // Auto-generate
-                                                                                                            setAiLoading(true);
-                                                                                                            fetch('/api/portal/ai/caption', {
-                                                                                                                method: 'POST',
-                                                                                                                headers: { 'Content-Type': 'application/json' },
-                                                                                                                body: JSON.stringify({
-                                                                                                                    fileName: file.name,
-                                                                                                                    projectName: project.name,
-                                                                                                                    clientName: project.client?.name || '',
-                                                                                                                    fileKind: file.kind,
-                                                                                                                }),
-                                                                                                            })
-                                                                                                                .then(r => r.json())
-                                                                                                                .then(d => setAiCaption(d.data?.caption || 'Erro ao gerar legenda.'))
-                                                                                                                .catch(() => setAiCaption('Erro ao gerar legenda.'))
-                                                                                                                .finally(() => setAiLoading(false));
                                                                                                         }}
                                                                                                         style={{
                                                                                                             display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px',
@@ -582,7 +568,7 @@ export default function PortalProjectsPage() {
                                                                                                             fontSize: '0.78rem', fontWeight: 600,
                                                                                                         }}
                                                                                                     >
-                                                                                                        <Wand2 size={13} />
+                                                                                                        <MessageCircle size={13} />
                                                                                                         Copy IA
                                                                                                     </button>
                                                                                                     <button
@@ -643,95 +629,225 @@ export default function PortalProjectsPage() {
                 )}
             </div>
 
-            {/* AI Caption Modal */}
-            {aiModal && (
+            {/* AI Chat Modal */}
+            {aiChat && (
                 <div
-                    style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
-                    onClick={() => setAiModal(null)}
+                    style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+                    onClick={() => setAiChat(null)}
                 >
                     <div
                         onClick={(e) => e.stopPropagation()}
                         style={{
-                            background: 'var(--color-bg)', borderRadius: 16, padding: 24,
-                            maxWidth: 480, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-                            position: 'relative',
+                            background: 'var(--color-bg)', borderRadius: 16,
+                            maxWidth: 520, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+                            display: 'flex', flexDirection: 'column', maxHeight: '80vh',
+                            overflow: 'hidden',
                         }}
                     >
-                        <button
-                            onClick={() => setAiModal(null)}
-                            style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex' }}
-                        >
-                            <X size={18} />
-                        </button>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                        {/* Chat Header */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 20px', borderBottom: '1px solid var(--color-border)' }}>
                             <div style={{
-                                width: 40, height: 40, borderRadius: 10,
+                                width: 36, height: 36, borderRadius: 10,
                                 background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                             }}>
-                                <Wand2 size={20} style={{ color: '#fff' }} />
+                                <Wand2 size={18} style={{ color: '#fff' }} />
                             </div>
-                            <div>
-                                <div style={{ fontWeight: 700, fontSize: '1rem' }}>Copy IA</div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Legenda gerada por inteligência artificial</div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>Copy IA</div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                                    {aiChat.fileName} • {aiChat.projectName}
+                                </div>
                             </div>
+                            <button
+                                onClick={() => setAiChat(null)}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', padding: 4 }}
+                            >
+                                <X size={18} />
+                            </button>
                         </div>
 
-                        {aiLoading ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: 30 }}>
-                                <Loader2 size={28} className="animate-spin" style={{ color: 'var(--color-primary)' }} />
-                                <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Gerando legenda...</span>
-                            </div>
-                        ) : (
-                            <>
+                        {/* Chat Messages */}
+                        <div
+                            id="ai-chat-messages"
+                            style={{
+                                flex: 1, overflowY: 'auto', padding: '16px 20px',
+                                display: 'flex', flexDirection: 'column', gap: 12,
+                                minHeight: 200,
+                            }}
+                        >
+                            {/* Welcome message */}
+                            {chatMessages.length === 0 && !chatLoading && (
                                 <div style={{
-                                    background: 'var(--color-bg-secondary)', borderRadius: 10, padding: 16,
-                                    fontSize: '0.88rem', lineHeight: 1.6, color: 'var(--color-text)',
-                                    border: '1px solid var(--color-border)', marginBottom: 14,
-                                    maxHeight: 240, overflowY: 'auto' as const, whiteSpace: 'pre-wrap' as const,
+                                    display: 'flex', gap: 10, alignItems: 'flex-start',
                                 }}>
-                                    {aiCaption}
+                                    <div style={{
+                                        width: 28, height: 28, borderRadius: 8,
+                                        background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2,
+                                    }}>
+                                        <Wand2 size={14} style={{ color: '#fff' }} />
+                                    </div>
+                                    <div style={{
+                                        background: 'var(--color-bg-secondary)', borderRadius: '4px 12px 12px 12px', padding: '10px 14px',
+                                        fontSize: '0.85rem', lineHeight: 1.5, color: 'var(--color-text)', maxWidth: '85%',
+                                    }}>
+                                        Olá! 👋 Sou a IA da Schumaker Flow. Estou aqui para te ajudar a criar a copy perfeita.<br /><br />
+                                        Me conta sobre o conteúdo de <strong>{aiChat.fileName}</strong> — o que aparece? Qual o tom desejado? É para feed, stories ou reels?
+                                    </div>
                                 </div>
-                                <div style={{ display: 'flex', gap: 8 }}>
-                                    <button
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(aiCaption);
-                                            setAiCopied(true);
-                                            setTimeout(() => setAiCopied(false), 2000);
-                                        }}
-                                        className="btn btn-primary"
-                                        style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'center' }}
-                                    >
-                                        {aiCopied ? <><Check size={15} /> Copiado!</> : <><Copy size={15} /> Copiar Legenda</>}
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            setAiCaption('');
-                                            setAiLoading(true);
-                                            fetch('/api/portal/ai/caption', {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({
-                                                    fileName: aiModal!.fileName,
-                                                    projectName: aiModal!.projectName,
-                                                    clientName: aiModal!.clientName,
-                                                    fileKind: aiModal!.fileKind,
-                                                }),
-                                            })
-                                                .then(r => r.json())
-                                                .then(d => setAiCaption(d.data?.caption || 'Erro ao gerar legenda.'))
-                                                .catch(() => setAiCaption('Erro ao gerar legenda.'))
-                                                .finally(() => setAiLoading(false));
-                                        }}
-                                        className="btn btn-secondary"
-                                        style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-                                    >
-                                        <Wand2 size={14} /> Nova
-                                    </button>
+                            )}
+
+                            {chatMessages.map((msg, i) => (
+                                <div
+                                    key={i}
+                                    style={{
+                                        display: 'flex', gap: 10,
+                                        flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
+                                        alignItems: 'flex-start',
+                                    }}
+                                >
+                                    {msg.role === 'model' && (
+                                        <div style={{
+                                            width: 28, height: 28, borderRadius: 8,
+                                            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2,
+                                        }}>
+                                            <Wand2 size={14} style={{ color: '#fff' }} />
+                                        </div>
+                                    )}
+                                    <div style={{ maxWidth: '85%', position: 'relative' }}>
+                                        <div style={{
+                                            background: msg.role === 'user' ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'var(--color-bg-secondary)',
+                                            color: msg.role === 'user' ? '#fff' : 'var(--color-text)',
+                                            borderRadius: msg.role === 'user' ? '12px 4px 12px 12px' : '4px 12px 12px 12px',
+                                            padding: '10px 14px', fontSize: '0.85rem', lineHeight: 1.5,
+                                            whiteSpace: 'pre-wrap' as const,
+                                        }}>
+                                            {msg.text}
+                                        </div>
+                                        {msg.role === 'model' && (
+                                            <button
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(msg.text);
+                                                    setCopiedIdx(i);
+                                                    setTimeout(() => setCopiedIdx(null), 2000);
+                                                }}
+                                                style={{
+                                                    position: 'absolute', bottom: -6, right: -6,
+                                                    background: 'var(--color-bg)', border: '1px solid var(--color-border)',
+                                                    borderRadius: 6, padding: '3px 6px', cursor: 'pointer',
+                                                    display: 'flex', alignItems: 'center', gap: 3,
+                                                    fontSize: '0.65rem', color: 'var(--color-text-muted)',
+                                                }}
+                                                title="Copiar"
+                                            >
+                                                {copiedIdx === i ? <><Check size={10} /> Copiado</> : <><Copy size={10} /> Copiar</>}
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
-                            </>
-                        )}
+                            ))}
+
+                            {chatLoading && (
+                                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                                    <div style={{
+                                        width: 28, height: 28, borderRadius: 8,
+                                        background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2,
+                                    }}>
+                                        <Wand2 size={14} style={{ color: '#fff' }} />
+                                    </div>
+                                    <div style={{
+                                        background: 'var(--color-bg-secondary)', borderRadius: '4px 12px 12px 12px', padding: '10px 14px',
+                                        display: 'flex', alignItems: 'center', gap: 8,
+                                    }}>
+                                        <Loader2 size={16} className="animate-spin" style={{ color: 'var(--color-primary)' }} />
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Pensando...</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Chat Input */}
+                        <form
+                            onSubmit={async (e) => {
+                                e.preventDefault();
+                                const text = chatInput.trim();
+                                if (!text || chatLoading) return;
+
+                                const newMessages = [...chatMessages, { role: 'user' as const, text }];
+                                setChatMessages(newMessages);
+                                setChatInput('');
+                                setChatLoading(true);
+
+                                // Scroll to bottom
+                                setTimeout(() => {
+                                    const el = document.getElementById('ai-chat-messages');
+                                    if (el) el.scrollTop = el.scrollHeight;
+                                }, 50);
+
+                                try {
+                                    const res = await fetch('/api/portal/ai/chat', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            message: text,
+                                            history: chatMessages,
+                                            context: {
+                                                fileName: aiChat!.fileName,
+                                                projectName: aiChat!.projectName,
+                                                clientName: aiChat!.clientName,
+                                                fileKind: aiChat!.fileKind,
+                                            },
+                                        }),
+                                    });
+                                    const data = await res.json();
+                                    const reply = data.data?.reply || 'Erro ao processar. Tente novamente.';
+                                    setChatMessages([...newMessages, { role: 'model', text: reply }]);
+                                } catch {
+                                    setChatMessages([...newMessages, { role: 'model', text: 'Erro de conexão. Tente novamente.' }]);
+                                } finally {
+                                    setChatLoading(false);
+                                    setTimeout(() => {
+                                        const el = document.getElementById('ai-chat-messages');
+                                        if (el) el.scrollTop = el.scrollHeight;
+                                    }, 50);
+                                }
+                            }}
+                            style={{
+                                display: 'flex', gap: 8, padding: '12px 20px', borderTop: '1px solid var(--color-border)',
+                                background: 'var(--color-bg)',
+                            }}
+                        >
+                            <input
+                                type="text"
+                                value={chatInput}
+                                onChange={(e) => setChatInput(e.target.value)}
+                                placeholder="Descreva o conteúdo ou peça uma copy..."
+                                disabled={chatLoading}
+                                autoFocus
+                                style={{
+                                    flex: 1, padding: '10px 14px', borderRadius: 10,
+                                    border: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)',
+                                    color: 'var(--color-text)', fontSize: '0.85rem', outline: 'none',
+                                    fontFamily: 'inherit',
+                                }}
+                            />
+                            <button
+                                type="submit"
+                                disabled={chatLoading || !chatInput.trim()}
+                                style={{
+                                    width: 42, height: 42, borderRadius: 10, border: 'none', cursor: 'pointer',
+                                    background: chatInput.trim() ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'var(--color-bg-secondary)',
+                                    color: chatInput.trim() ? '#fff' : 'var(--color-text-muted)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    transition: 'all 0.2s',
+                                }}
+                            >
+                                <Send size={18} />
+                            </button>
+                        </form>
                     </div>
                 </div>
             )}
