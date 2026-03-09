@@ -76,6 +76,17 @@ enum InvoiceItemType {
   ONE_OFF
 }
 
+enum ExpenseCategory {
+  SOFTWARE
+  EQUIPMENT
+  MARKETING
+  OFFICE
+  SALARY
+  FREELANCER
+  TAX
+  OTHER
+}
+
 enum PaymentMethod {
   PIX
   MANUAL
@@ -162,6 +173,7 @@ model Tenant {
   notificationLogs    NotificationLog[]
   auditLogs           AuditLog[]
   clientAccess        ClientAccess[]
+  expenses            Expense[]
 
   @@index([slug])
   @@index([subdomain])
@@ -567,4 +579,26 @@ model ShareLink {
 
   @@index([token])
   @@index([fileId])
+}
+
+// ==================== EXPENSE ====================
+
+model Expense {
+  id              String          @id @default(uuid())
+  tenantId        String
+  description     String
+  amount          Decimal         @db.Decimal(10, 2)
+  category        ExpenseCategory @default(OTHER)
+  date            DateTime
+  referenceMonth  String?         // "2026-03"
+  notes           String?
+  recurring       Boolean         @default(false)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([date])
+  @@index([referenceMonth])
 }

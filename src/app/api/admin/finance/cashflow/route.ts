@@ -1,0 +1,74 @@
+import { NextRequest } from 'next/server';
+import { withAuth, apiSuccess, ApiContext } from '@/lib/api/helpers';
+import prisma from '@/lib/db';
+
+// GET /api/admin/finance/cashflow?month=2026-03
+export const GET = withAuth(
+    async (req: NextRequest, ctx: ApiContext) => {
+        const url = new URL(req.url);
+        const monthParam = url.searchParams.get('month');
+
+        const now = new Date();
+        const [y, m] = monthParam
+            ? monthParam.split('-').map(Number)
+            : [now.getFullYear(), now.getMonth() + 1];
+
+        const start = new Date(y, m - 1, 1);
+        const end = new Date(y, m, 1);
+
+        // Income: paid invoices where paidAt falls in this month
+        const paidInvoices = await prisma.invoice.findMany({
+            where: {
+                tenantId: ctx.tenantId,
+                status: 'PAID',
+                paidAt: { gte: start, lt: end },
+            },
+            include: { client: { select: { name: true } }, contract: { select: { name: true } } },
+            orderBy: { paidAt: 'desc' },
+        });
+
+        // Expenses in this month
+        const expenses = await prisma.expense.findMany({
+            where: {
+                tenantId: ctx.tenantId,
+                date: { gte: start, lt: end },
+            },
+            orderBy: { date: 'desc' },
+        });
+
+        const totalIncome = paidInvoices.reduce((s: number, i) => s + Number(i.totalAmount), 0);
+        const totalExpenses = expenses.reduce((s: number, e) => s + Number(e.amount), 0);
+        const balance = totalIncome - totalExpenses;
+
+        // Unified transaction list
+        const transactions = [
+            ...paidInvoices.map(i => ({
+                id: i.id,
+                type: 'income' as const,
+                description: i.contract?.name || i.notes || `Fatura - ${i.client.name}`,
+                client: i.client.name,
+                amount: Number(i.totalAmount),
+                date: i.paidAt!.toISOString(),
+                category: null,
+            })),
+            ...expenses.map(e => ({
+                id: e.id,
+                type: 'expense' as const,
+                description: e.description,
+                client: null,
+                amount: Number(e.amount),
+                date: e.date.toISOString(),
+                category: e.category,
+            })),
+        ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+        return apiSuccess({
+            month: `${y}-${String(m).padStart(2, '0')}`,
+            totalIncome,
+            totalExpenses,
+            balance,
+            transactions,
+        });
+    },
+    { roles: ['SUPERADMIN', 'TENANT_ADMIN'] }
+);

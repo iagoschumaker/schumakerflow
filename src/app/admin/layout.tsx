@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { LayoutDashboard, Users, FolderKanban, FileText, Download, DollarSign, Settings, Shield, Zap, LogOut, Menu } from 'lucide-react';
+import { LayoutDashboard, Users, FolderKanban, FileText, Download, DollarSign, Settings, Shield, Zap, LogOut, Menu, ChevronDown, Receipt, TrendingUp, CreditCard } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import { ToastProvider } from '@/components/Toast';
 
@@ -14,13 +14,27 @@ interface UserInfo {
     tenantId?: string;
 }
 
-const adminMenu = [
+interface MenuItem {
+    href: string;
+    label: string;
+    icon: React.ReactNode;
+    children?: { href: string; label: string; icon: React.ReactNode }[];
+}
+
+const adminMenu: MenuItem[] = [
     { href: '/admin', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
     { href: '/admin/clients', label: 'Clientes', icon: <Users size={18} /> },
     { href: '/admin/projects', label: 'Projetos', icon: <FolderKanban size={18} /> },
     { href: '/admin/files', label: 'Arquivos', icon: <FileText size={18} /> },
     { href: '/admin/downloads', label: 'Downloads', icon: <Download size={18} /> },
-    { href: '/admin/finance', label: 'Financeiro', icon: <DollarSign size={18} /> },
+    {
+        href: '/admin/finance', label: 'Financeiro', icon: <DollarSign size={18} />,
+        children: [
+            { href: '/admin/finance/receivables', label: 'Recebíveis', icon: <Receipt size={16} /> },
+            { href: '/admin/finance/expenses', label: 'Despesas', icon: <CreditCard size={16} /> },
+            { href: '/admin/finance/cashflow', label: 'Fluxo Financeiro', icon: <TrendingUp size={16} /> },
+        ],
+    },
     { href: '/admin/settings', label: 'Configurações', icon: <Settings size={18} /> },
 ];
 
@@ -33,6 +47,7 @@ export default function AdminLayout({
     const router = useRouter();
     const [user, setUser] = useState<UserInfo | null>(null);
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set(pathname.startsWith('/admin/finance') ? ['/admin/finance'] : []));
 
     useEffect(() => {
         fetch('/api/auth/me')
@@ -73,17 +88,58 @@ export default function AdminLayout({
                     <nav className="sidebar-nav">
                         <div className="sidebar-section">
                             <div className="sidebar-section-title">Menu Principal</div>
-                            {adminMenu.map((item) => (
-                                <a
-                                    key={item.href}
-                                    href={item.href}
-                                    className={`sidebar-link ${pathname === item.href ? 'active' : ''}`}
-                                    onClick={() => setSidebarOpen(false)}
-                                >
-                                    <span className="icon">{item.icon}</span>
-                                    {item.label}
-                                </a>
-                            ))}
+                            {adminMenu.map((item) => {
+                                if (item.children) {
+                                    const isExpanded = expandedMenus.has(item.href);
+                                    const isActive = pathname.startsWith(item.href);
+                                    return (
+                                        <div key={item.href}>
+                                            <button
+                                                className={`sidebar-link ${isActive ? 'active' : ''}`}
+                                                onClick={() => setExpandedMenus(prev => {
+                                                    const next = new Set(prev);
+                                                    if (next.has(item.href)) next.delete(item.href); else next.add(item.href);
+                                                    return next;
+                                                })}
+                                                style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                                            >
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                    <span className="icon">{item.icon}</span>
+                                                    {item.label}
+                                                </span>
+                                                <ChevronDown size={14} style={{ transition: 'transform 0.2s', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', opacity: 0.5 }} />
+                                            </button>
+                                            {isExpanded && (
+                                                <div style={{ paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 2, marginTop: 2 }}>
+                                                    {item.children.map(sub => (
+                                                        <a
+                                                            key={sub.href}
+                                                            href={sub.href}
+                                                            className={`sidebar-link ${pathname === sub.href ? 'active' : ''}`}
+                                                            onClick={() => setSidebarOpen(false)}
+                                                            style={{ fontSize: '0.85rem', padding: '6px 12px' }}
+                                                        >
+                                                            <span className="icon">{sub.icon}</span>
+                                                            {sub.label}
+                                                        </a>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                }
+                                return (
+                                    <a
+                                        key={item.href}
+                                        href={item.href}
+                                        className={`sidebar-link ${pathname === item.href ? 'active' : ''}`}
+                                        onClick={() => setSidebarOpen(false)}
+                                    >
+                                        <span className="icon">{item.icon}</span>
+                                        {item.label}
+                                    </a>
+                                );
+                            })}
                         </div>
 
                         {user?.role === 'SUPERADMIN' && (
