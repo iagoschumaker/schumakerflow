@@ -84,10 +84,10 @@ async function main() {
                     fields: 'modifiedTime, createdTime',
                 });
 
-                const driveDate = res.data.modifiedTime
-                    ? new Date(res.data.modifiedTime)
-                    : res.data.createdTime
-                        ? new Date(res.data.createdTime)
+                const driveDate = res.data.createdTime
+                    ? new Date(res.data.createdTime)
+                    : res.data.modifiedTime
+                        ? new Date(res.data.modifiedTime)
                         : null;
 
                 if (driveDate) {

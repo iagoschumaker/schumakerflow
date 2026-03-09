@@ -67,9 +67,9 @@ export const POST = withAuth(
                         for (const file of res.data.files || []) {
                             if (!file.id || existingDriveIds.has(file.id)) continue;
 
-                            // Use the Drive file's modifiedTime as publishedAt
-                            const fileDate = file.modifiedTime ? new Date(file.modifiedTime)
-                                : file.createdTime ? new Date(file.createdTime) : new Date();
+                            // Use the Drive file's createdTime as publishedAt (more reliable than modifiedTime)
+                            const fileDate = file.createdTime ? new Date(file.createdTime)
+                                : file.modifiedTime ? new Date(file.modifiedTime) : new Date();
 
                             // This file exists in Drive but not in DB — import it
                             await prisma.file.create({
