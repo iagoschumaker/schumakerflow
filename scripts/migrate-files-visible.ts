@@ -7,8 +7,14 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import pg from 'pg';
 
-const prisma = new PrismaClient();
+const pool = new pg.Pool({
+    connectionString: process.env.DATABASE_URL,
+});
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
     console.log('🔄 Atualizando arquivos existentes...\n');
@@ -31,7 +37,6 @@ async function main() {
 
     // 3. Set publishedAt = createdAt for files without publishedAt
     if (noPublishedAt > 0) {
-        // Need to do this in a loop since updateMany can't reference own fields
         const filesWithoutDate = await prisma.file.findMany({
             where: { publishedAt: null },
             select: { id: true, createdAt: true },
@@ -65,4 +70,5 @@ main()
     })
     .finally(async () => {
         await prisma.$disconnect();
+        await pool.end();
     });
