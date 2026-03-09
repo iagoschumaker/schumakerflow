@@ -100,6 +100,9 @@ enum NotificationType {
   PASSWORD_RESET
   FILE_PUBLISHED
   DOWNLOAD_BLOCKED
+  WHATSAPP_REMINDER
+  WHATSAPP_DUE_TODAY
+  WHATSAPP_OVERDUE
 }
 
 enum JobStatus {
@@ -122,6 +125,13 @@ model Tenant {
   driveAccessToken    String?
   driveTokenExpiry    DateTime?
   driveEmail          String?
+  // Subscription / Plan
+  plan                String?       // e.g. "free", "starter", "pro"
+  maxProjects         Int?          // null = unlimited
+  maxUsers            Int?          // null = unlimited
+  featureFinance      Boolean       @default(true)
+  // Evolution API (WhatsApp)
+  evolutionInstance   String?
   // Billing/block config
   blockAfterDays      Int           @default(7)
   blockMode           BlockMode     @default(BLOCK_FINAL_ONLY)
@@ -179,13 +189,14 @@ model User {
 }
 
 model TenantMember {
-  id        String   @id @default(uuid())
-  tenantId  String
-  userId    String
-  role      UserRole // TENANT_ADMIN or TENANT_STAFF
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(uuid())
+  tenantId    String
+  userId      String
+  role        UserRole // TENANT_ADMIN or TENANT_STAFF
+  permissions String?  // JSON string with granular permissions
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -330,6 +341,7 @@ model File {
   project         Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   downloadEvents  DownloadEvent[]
   invoiceItems    InvoiceItem[]
+  shareLinks      ShareLink[]
 
   @@index([tenantId])
   @@index([projectId])
@@ -518,4 +530,35 @@ model AuditLog {
   @@index([action])
   @@index([entityType, entityId])
   @@index([createdAt])
+}
+
+model PlanTemplate {
+  id              String   @id @default(uuid())
+  name            String   @unique
+  displayName     String
+  maxProjects     Int?
+  maxUsers        Int?
+  featureFinance  Boolean  @default(true)
+  price           Float    @default(0)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ShareLink {
+  id        String    @id @default(uuid())
+  token     String    @unique
+  fileId    String
+  tenantId  String
+  expiresAt DateTime?
+  password  String?
+  maxViews  Int?
+  viewCount Int       @default(0)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+
+  file      File      @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([fileId])
 }
