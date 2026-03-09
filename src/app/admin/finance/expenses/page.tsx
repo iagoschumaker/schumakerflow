@@ -80,8 +80,8 @@ export default function ExpensesPage() {
     const formatCurrency = (v: number | string) => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
     const safeDate = (d: string) => {
         if (!d) return '';
-        const s = d.length === 10 ? `${d}T12:00:00` : d.replace('T00:00:00.000Z', 'T12:00:00');
-        return new Date(s).toLocaleDateString('pt-BR');
+        const p = d.substring(0, 10).split('-');
+        return `${p[2]}/${p[1]}/${p[0]}`;
     };
 
     const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount), 0);
