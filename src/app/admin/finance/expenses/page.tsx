@@ -78,6 +78,11 @@ export default function ExpensesPage() {
     const nextMonth = () => setCurrentMonth(p => p.month === 12 ? { year: p.year + 1, month: 1 } : { ...p, month: p.month + 1 });
 
     const formatCurrency = (v: number | string) => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    const safeDate = (d: string) => {
+        if (!d) return '';
+        const s = d.length === 10 ? `${d}T12:00:00` : d.replace('T00:00:00.000Z', 'T12:00:00');
+        return new Date(s).toLocaleDateString('pt-BR');
+    };
 
     const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount), 0);
     const totalPaid = expenses.filter(e => e.status === 'PAID').reduce((s, e) => s + Number(e.amount), 0);
@@ -291,9 +296,9 @@ export default function ExpensesPage() {
                                             {exp.recurring && <span style={{ fontSize: '0.55rem', fontWeight: 600, padding: '1px 6px', borderRadius: 6, background: '#6366f115', color: '#6366f1' }}>Recorrente</span>}
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 3, fontSize: '0.76rem', color: 'var(--color-text-muted)', flexWrap: 'wrap' }}>
-                                            <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><Calendar size={11} /> {new Date(exp.date).toLocaleDateString('pt-BR')}</span>
-                                            {exp.dueDate && <span>Venc: {new Date(exp.dueDate).toLocaleDateString('pt-BR')}</span>}
-                                            {exp.paidAt && <span style={{ color: '#22c55e' }}>Pago em {new Date(exp.paidAt).toLocaleDateString('pt-BR')}</span>}
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><Calendar size={11} /> {safeDate(exp.date)}</span>
+                                            {exp.dueDate && <span>Venc: {safeDate(exp.dueDate)}</span>}
+                                            {exp.paidAt && <span style={{ color: '#22c55e' }}>Pago em {safeDate(exp.paidAt)}</span>}
                                             {exp.notes && <span>{exp.notes}</span>}
                                         </div>
                                     </div>

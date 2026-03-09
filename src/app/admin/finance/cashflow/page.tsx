@@ -84,7 +84,7 @@ export default function CashflowPage() {
     const nextMonth = () => setCurrentMonth(p => p.month === 12 ? { year: p.year + 1, month: 1 } : { ...p, month: p.month + 1 });
 
     const formatCurrency = (v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-    const fDate = (d: string) => new Date(d).toLocaleDateString('pt-BR');
+    const fDate = (d: string) => { const s = d.length === 10 ? `${d}T12:00:00` : d.replace('T00:00:00.000Z', 'T12:00:00'); return new Date(s).toLocaleDateString('pt-BR'); };
     const fMonth = (m: string | null) => { if (!m) return ''; const [y, mo] = m.split('-'); return `${MONTH_SHORT[parseInt(mo) - 1]}/${y}`; };
 
     const filteredTransactions = data?.transactions.filter(t => filter === 'ALL' || t.type === filter) || [];
