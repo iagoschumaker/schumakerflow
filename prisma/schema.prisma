@@ -243,9 +243,25 @@ model Client {
   clientAccess    ClientAccess[]
   contracts       Contract[]
   invoices        Invoice[]
+  instagramAccounts ClientInstagram[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
+}
+
+model ClientInstagram {
+  id          String   @id @default(uuid())
+  clientId    String
+  accessToken String
+  igUserId    String
+  username    String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([igUserId])
 }
 
 model ClientAccess {
