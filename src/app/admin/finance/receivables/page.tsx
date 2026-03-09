@@ -5,7 +5,8 @@ import { useToast } from '@/components/Toast';
 import {
     FileText, ClipboardList, CreditCard, Search, X, Plus,
     Loader2, DollarSign, Receipt, Pencil, Trash2, Check, Ban,
-    Calendar, ArrowRight, User, MessageCircle, QrCode, Copy, FileDown
+    Calendar, ArrowRight, User, MessageCircle, QrCode, Copy, FileDown,
+    ChevronLeft, ChevronRight
 } from 'lucide-react';
 import FloatingActionButton from '@/components/FloatingActionButton';
 import { generateBillingPdf, generateBillingPdfWithQr, generateReceiptPdf } from '@/lib/finance/pdf';
@@ -44,6 +45,8 @@ interface Contract {
 
 interface ClientOption { id: string; name: string; }
 
+const MONTH_NAMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
 export default function FinancePage() {
     const { showToast, showConfirm } = useToast();
     const [tab, setTab] = useState<'contracts' | 'invoices'>('contracts');
@@ -56,6 +59,12 @@ export default function FinancePage() {
     const [qrModal, setQrModal] = useState<{ qrDataUrl: string; payload: string; invoices: Invoice[]; totalAmount: number; msg: string; phone: string } | null>(null);
     const [qrLoading, setQrLoading] = useState(false);
     const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set());
+
+    // Month navigation
+    const now = new Date();
+    const [currentMonth, setCurrentMonth] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 });
+    const prevMonth = () => setCurrentMonth(p => p.month === 1 ? { year: p.year - 1, month: 12 } : { ...p, month: p.month - 1 });
+    const nextMonth = () => setCurrentMonth(p => p.month === 12 ? { year: p.year + 1, month: 1 } : { ...p, month: p.month + 1 });
 
     // Sub-tab filters
     const [invoiceFilter, setInvoiceFilter] = useState<'ALL' | 'PENDING' | 'PAID' | 'OVERDUE' | 'CANCELLED'>('ALL');
@@ -270,7 +279,11 @@ export default function FinancePage() {
     const invoiceTotal = invoiceForm.items.reduce((s, i) => s + (parseInt(i.quantity) || 0) * (parseFloat(i.unitPrice) || 0), 0);
 
     // ==== Filters ====
-    const filteredInvoices = invoices
+    const monthInvoices = invoices.filter(inv => {
+        const d = new Date(inv.dueDate);
+        return d.getFullYear() === currentMonth.year && (d.getMonth() + 1) === currentMonth.month;
+    });
+    const filteredInvoices = monthInvoices
         .filter(inv => invoiceFilter === 'ALL' || inv.status === invoiceFilter)
         .filter(inv => inv.client.name.toLowerCase().includes(search.toLowerCase()) || (inv.referenceMonth && inv.referenceMonth.includes(search)));
 
@@ -278,10 +291,10 @@ export default function FinancePage() {
         .filter(c => contractFilter === 'ALL' || c.status === contractFilter)
         .filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || c.client.name.toLowerCase().includes(search.toLowerCase()));
 
-    // Stats
-    const totalPending = invoices.filter(i => i.status === 'PENDING').reduce((s, i) => s + Number(i.totalAmount), 0);
-    const totalPaid = invoices.filter(i => i.status === 'PAID').reduce((s, i) => s + Number(i.totalAmount), 0);
-    const totalOverdue = invoices.filter(i => i.status === 'OVERDUE').reduce((s, i) => s + Number(i.totalAmount), 0);
+    // Stats (based on current month)
+    const totalPending = monthInvoices.filter(i => i.status === 'PENDING').reduce((s, i) => s + Number(i.totalAmount), 0);
+    const totalPaid = monthInvoices.filter(i => i.status === 'PAID').reduce((s, i) => s + Number(i.totalAmount), 0);
+    const totalOverdue = monthInvoices.filter(i => i.status === 'OVERDUE').reduce((s, i) => s + Number(i.totalAmount), 0);
     const activeContracts = contracts.filter(c => c.status === 'ACTIVE').length;
 
     // Client picker render function (NOT a component - avoids re-mount/focus-loss)
@@ -351,11 +364,20 @@ export default function FinancePage() {
                 }
             `}</style>
             <div className="page-header">
-                <h1>Financeiro</h1>
+                <h1>Recebíveis</h1>
                 <p>Gerencie contratos e faturas</p>
             </div>
 
             <div className="page-content">
+                {/* Month navigation */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginBottom: 20, padding: '10px 0' }}>
+                    <button onClick={prevMonth} className="btn btn-secondary btn-sm" style={{ padding: '6px 10px' }}><ChevronLeft size={18} /></button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 180, justifyContent: 'center' }}>
+                        <Calendar size={16} style={{ color: 'var(--color-primary)' }} />
+                        <span style={{ fontWeight: 700, fontSize: '1.05rem' }}>{MONTH_NAMES[currentMonth.month - 1]} {currentMonth.year}</span>
+                    </div>
+                    <button onClick={nextMonth} className="btn btn-secondary btn-sm" style={{ padding: '6px 10px' }}><ChevronRight size={18} /></button>
+                </div>
                 {/* ==== SUMMARY CARDS ==== */}
                 <div className="stat-grid">
                     {[
@@ -379,7 +401,7 @@ export default function FinancePage() {
                 <div className="main-tabs">
                     {([
                         { key: 'contracts' as const, label: 'Contratos', icon: <ClipboardList size={15} />, count: contracts.length },
-                        { key: 'invoices' as const, label: 'Faturas', icon: <FileText size={15} />, count: invoices.length },
+                        { key: 'invoices' as const, label: 'Faturas', icon: <FileText size={15} />, count: monthInvoices.length },
                     ]).map(t => (
                         <button key={t.key} onClick={() => { setTab(t.key); setSearch(''); }}
                             style={{
@@ -397,11 +419,11 @@ export default function FinancePage() {
                 <div className="filter-bar">
                     {tab === 'invoices' ? (
                         <>
-                            <Pill label="Todas" active={invoiceFilter === 'ALL'} count={invoices.length} onClick={() => setInvoiceFilter('ALL')} />
-                            <Pill label="Pendentes" active={invoiceFilter === 'PENDING'} count={invoices.filter(i => i.status === 'PENDING').length} onClick={() => setInvoiceFilter('PENDING')} />
-                            <Pill label="Pagas" active={invoiceFilter === 'PAID'} count={invoices.filter(i => i.status === 'PAID').length} onClick={() => setInvoiceFilter('PAID')} />
-                            <Pill label="Atrasadas" active={invoiceFilter === 'OVERDUE'} count={invoices.filter(i => i.status === 'OVERDUE').length} onClick={() => setInvoiceFilter('OVERDUE')} />
-                            <Pill label="Canceladas" active={invoiceFilter === 'CANCELLED'} count={invoices.filter(i => i.status === 'CANCELLED').length} onClick={() => setInvoiceFilter('CANCELLED')} />
+                            <Pill label="Todas" active={invoiceFilter === 'ALL'} count={monthInvoices.length} onClick={() => setInvoiceFilter('ALL')} />
+                            <Pill label="Pendentes" active={invoiceFilter === 'PENDING'} count={monthInvoices.filter(i => i.status === 'PENDING').length} onClick={() => setInvoiceFilter('PENDING')} />
+                            <Pill label="Pagas" active={invoiceFilter === 'PAID'} count={monthInvoices.filter(i => i.status === 'PAID').length} onClick={() => setInvoiceFilter('PAID')} />
+                            <Pill label="Atrasadas" active={invoiceFilter === 'OVERDUE'} count={monthInvoices.filter(i => i.status === 'OVERDUE').length} onClick={() => setInvoiceFilter('OVERDUE')} />
+                            <Pill label="Canceladas" active={invoiceFilter === 'CANCELLED'} count={monthInvoices.filter(i => i.status === 'CANCELLED').length} onClick={() => setInvoiceFilter('CANCELLED')} />
                         </>
                     ) : (
                         <>
