@@ -143,12 +143,44 @@ export default function ExpensesPage() {
         } finally { setSaving(false); }
     };
 
-    const handleDelete = async (id: string) => {
-        const ok = await showConfirm({ title: 'Excluir Despesa', message: 'Tem certeza que deseja excluir esta despesa?', confirmText: 'Sim, excluir', variant: 'danger' });
-        if (!ok) return;
-        await fetch(`/api/admin/finance/expenses/${id}`, { method: 'DELETE' });
-        showToast('Despesa excluída', 'success');
-        loadExpenses();
+    const handleDelete = async (exp: Expense) => {
+        const isInstallment = /\(\d+\/\d+\)/.test(exp.description);
+
+        if (isInstallment) {
+            // First ask: delete just this or all?
+            const deleteAll = await showConfirm({
+                title: 'Excluir Parcela',
+                message: 'Esta despesa faz parte de parcelas. Deseja excluir todas as parcelas ou apenas esta?',
+                confirmText: 'Excluir todas as parcelas',
+                variant: 'danger',
+            });
+
+            if (deleteAll) {
+                await fetch(`/api/admin/finance/expenses/${exp.id}?mode=all`, { method: 'DELETE' });
+                showToast('Todas as parcelas excluídas', 'success');
+                loadExpenses();
+                return;
+            }
+
+            // User chose "Não, voltar" — ask again for single delete
+            const deleteSingle = await showConfirm({
+                title: 'Excluir apenas esta parcela?',
+                message: `Excluir apenas "${exp.description}"?`,
+                confirmText: 'Sim, excluir esta',
+                variant: 'danger',
+            });
+            if (!deleteSingle) return;
+
+            await fetch(`/api/admin/finance/expenses/${exp.id}?mode=single`, { method: 'DELETE' });
+            showToast('Parcela excluída', 'success');
+            loadExpenses();
+        } else {
+            const ok = await showConfirm({ title: 'Excluir Despesa', message: 'Tem certeza que deseja excluir esta despesa?', confirmText: 'Sim, excluir', variant: 'danger' });
+            if (!ok) return;
+            await fetch(`/api/admin/finance/expenses/${exp.id}`, { method: 'DELETE' });
+            showToast('Despesa excluída', 'success');
+            loadExpenses();
+        }
     };
 
     const handleMarkPaid = async (id: string) => {
@@ -312,7 +344,7 @@ export default function ExpensesPage() {
                                             <button className="btn btn-secondary btn-sm" onClick={() => handleMarkUnpaid(exp.id)} style={{ padding: '5px 8px' }} title="Desfazer pagamento"><RotateCcw size={13} /></button>
                                         )}
                                         <button className="btn btn-secondary btn-sm" onClick={() => openEdit(exp)} style={{ padding: '5px 8px' }} title="Editar"><Pencil size={13} /></button>
-                                        <button className="btn btn-danger btn-sm" onClick={() => handleDelete(exp.id)} style={{ padding: '5px 8px' }} title="Excluir"><Trash2 size={13} /></button>
+                                        <button className="btn btn-danger btn-sm" onClick={() => handleDelete(exp)} style={{ padding: '5px 8px' }} title="Excluir"><Trash2 size={13} /></button>
                                     </div>
                                 </div>
                             );

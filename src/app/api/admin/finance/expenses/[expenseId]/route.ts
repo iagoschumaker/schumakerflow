@@ -151,19 +151,38 @@ export const PATCH = withAuth(
     { roles: ['SUPERADMIN', 'TENANT_ADMIN'] }
 );
 
-// DELETE /api/admin/finance/expenses/[expenseId]
+// DELETE /api/admin/finance/expenses/[expenseId]?mode=single|all
 export const DELETE = withAuth(
     async (req: NextRequest, ctx: ApiContext) => {
         const expenseId = req.nextUrl.pathname.split('/').pop()!;
+        const mode = new URL(req.url).searchParams.get('mode') || 'single';
 
         const existing = await prisma.expense.findFirst({
             where: { id: expenseId, tenantId: ctx.tenantId },
         });
         if (!existing) return apiError('Despesa não encontrada', 404);
 
+        if (mode === 'all') {
+            // Extract base description: "Adobe (2/6)" → "Adobe"
+            const baseDesc = existing.description.replace(/\s*\(\d+\/\d+\)\s*$/, '').trim();
+
+            // Delete all matching installments
+            const deleted = await prisma.expense.deleteMany({
+                where: {
+                    tenantId: ctx.tenantId,
+                    category: existing.category,
+                    description: {
+                        startsWith: baseDesc,
+                    },
+                },
+            });
+
+            return apiSuccess({ deleted: true, count: deleted.count });
+        }
+
         await prisma.expense.delete({ where: { id: expenseId } });
 
-        return apiSuccess({ deleted: true });
+        return apiSuccess({ deleted: true, count: 1 });
     },
     { roles: ['SUPERADMIN', 'TENANT_ADMIN'] }
 );
