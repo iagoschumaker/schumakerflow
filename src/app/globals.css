@@ -776,7 +776,8 @@ tbody tr:last-child td {
   justify-content: center;
   flex-direction: column;
   gap: var(--space-4);
-  background: url('/icons/login-banner.png') center/cover no-repeat;
+  background: url('/icons/banner-4k.png') center/cover no-repeat;
+  min-height: 100vh;
 }
 
 .login-banner::before {
