@@ -72,6 +72,17 @@ export default function PortalProjectsPage() {
     const handleDownload = async (fileId: string) => {
         setDownloading(fileId);
         try {
+            // iOS Safari doesn't support blob download with anchor.download
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+            if (isIOS) {
+                // On iOS, open the download URL directly — Safari handles it natively
+                window.open(`/api/files/${fileId}/download`, '_blank');
+                showToast('Abrindo download...', 'info');
+                setTimeout(loadData, 2000);
+                return;
+            }
+
             const res = await fetch(`/api/files/${fileId}/download`);
             if (!res.ok) {
                 const err = await res.json();
@@ -83,13 +94,15 @@ export default function PortalProjectsPage() {
             let filename = 'download';
             if (contentDisposition) {
                 const match = contentDisposition.match(/filename="?(.+?)"?$/);
-                if (match) filename = match[1];
+                if (match) filename = decodeURIComponent(match[1]);
             }
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
             a.download = filename;
+            document.body.appendChild(a);
             a.click();
+            document.body.removeChild(a);
             URL.revokeObjectURL(url);
             showToast('Download concluído!', 'success');
             setTimeout(loadData, 1000);

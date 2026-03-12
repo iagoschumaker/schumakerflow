@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import PWAInstallBanner from "@/components/PWAInstallBanner";
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -46,7 +47,9 @@ export default function RootLayout({
           })();
         ` }} />
         {children}
+        <PWAInstallBanner />
       </body>
     </html>
   );
 }
+
