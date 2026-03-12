@@ -35,6 +35,19 @@ export async function createDriveFolder(
         throw new Error(`Failed to create folder: ${name}`);
     }
 
+    // Set "Anyone with the link can view" permission
+    try {
+        await drive.permissions.create({
+            fileId: response.data.id,
+            requestBody: {
+                type: 'anyone',
+                role: 'reader',
+            },
+        });
+    } catch (e) {
+        console.error(`Failed to set public permission on folder ${name}:`, e);
+    }
+
     return {
         folderId: response.data.id,
         folderName: response.data.name || name,
