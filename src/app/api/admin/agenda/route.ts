@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server';
 import { withAuth, apiSuccess, ApiContext } from '@/lib/api/helpers';
 import prisma from '@/lib/db';
+import { getCalendarEvents } from '@/lib/calendar/client';
+import { isDriveConfiguredForTenant } from '@/lib/drive/client';
 
 // GET /api/admin/agenda?month=2026-03
 export const GET = withAuth(
@@ -45,7 +47,7 @@ export const GET = withAuth(
         const events: Array<{
             id: string;
             date: string;
-            type: 'invoice_due' | 'invoice_paid' | 'expense' | 'delivery';
+            type: string;
             title: string;
             subtitle: string | null;
             amount: number | null;
@@ -92,16 +94,53 @@ export const GET = withAuth(
             });
         }
 
+        // Fetch Google Calendar events if Drive (and Calendar) is connected
+        let calendarConnected = false;
+        try {
+            const driveConnected = await isDriveConfiguredForTenant(ctx.tenantId);
+            if (driveConnected) {
+                calendarConnected = true;
+                const calEvents = await getCalendarEvents(ctx.tenantId, start, end);
+
+                for (const ev of calEvents) {
+                    const evDate = ev.start?.date || ev.start?.dateTime?.slice(0, 10) || '';
+                    if (!evDate) continue;
+
+                    // Determine time for display
+                    let timeStr = null;
+                    if (ev.start?.dateTime) {
+                        const d = new Date(ev.start.dateTime);
+                        timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                    }
+
+                    events.push({
+                        id: `gcal-${ev.id}`,
+                        date: evDate,
+                        type: 'calendar',
+                        title: ev.summary || 'Evento',
+                        subtitle: timeStr ? `${timeStr}${ev.location ? ' — ' + ev.location : ''}` : (ev.location || null),
+                        amount: null,
+                        color: '#8b5cf6',
+                        status: ev.status || null,
+                    });
+                }
+            }
+        } catch (e) {
+            console.error('Failed to fetch Google Calendar events:', e);
+        }
+
         // Sort by date
         events.sort((a, b) => a.date.localeCompare(b.date));
 
         return apiSuccess({
             month: `${year}-${String(mon).padStart(2, '0')}`,
             events,
+            calendarConnected,
             summary: {
                 invoices: invoices.length,
                 expenses: expenses.length,
                 deliveries: projects.length,
+                calendarEvents: events.filter(e => e.type === 'calendar').length,
             },
         });
     },

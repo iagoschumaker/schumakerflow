@@ -3,13 +3,13 @@
 import { useEffect, useState } from 'react';
 import {
     Calendar as CalendarIcon, ChevronLeft, ChevronRight, Loader2,
-    Receipt, CreditCard, Package, Clock
+    Receipt, CreditCard, Package, Clock, CalendarCheck
 } from 'lucide-react';
 
 interface AgendaEvent {
     id: string;
     date: string;
-    type: 'invoice_due' | 'invoice_paid' | 'expense' | 'delivery';
+    type: 'invoice_due' | 'invoice_paid' | 'expense' | 'delivery' | 'calendar';
     title: string;
     subtitle: string | null;
     amount: number | null;
@@ -20,7 +20,8 @@ interface AgendaEvent {
 interface AgendaData {
     month: string;
     events: AgendaEvent[];
-    summary: { invoices: number; expenses: number; deliveries: number };
+    calendarConnected: boolean;
+    summary: { invoices: number; expenses: number; deliveries: number; calendarEvents: number };
 }
 
 const MONTH_NAMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
@@ -31,12 +32,14 @@ const TYPE_ICONS: Record<string, React.ReactNode> = {
     invoice_paid: <Receipt size={12} />,
     expense: <CreditCard size={12} />,
     delivery: <Package size={12} />,
+    calendar: <CalendarCheck size={12} />,
 };
 
 const TYPE_LABELS: Record<string, string> = {
     invoice_due: 'Fatura',
     expense: 'Despesa',
     delivery: 'Entrega',
+    calendar: 'Google Calendar',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -153,6 +156,11 @@ export default function AgendaPage() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 20, background: '#3b82f615', color: '#3b82f6', fontSize: '0.78rem', fontWeight: 600 }}>
                                 <Package size={13} /> {data.summary.deliveries} entrega(s)
                             </div>
+                            {data.calendarConnected && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 20, background: '#8b5cf615', color: '#8b5cf6', fontSize: '0.78rem', fontWeight: 600 }}>
+                                    <CalendarCheck size={13} /> {data.summary.calendarEvents} evento(s)
+                                </div>
+                            )}
                         </div>
 
                         {/* Calendar grid */}
@@ -200,6 +208,7 @@ export default function AgendaPage() {
                             <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e' }} /> Pago</span>
                             <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444' }} /> Atrasado/Despesa</span>
                             <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#3b82f6' }} /> Entrega</span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#8b5cf6' }} /> Google Calendar</span>
                         </div>
 
                         {/* Selected day events */}
