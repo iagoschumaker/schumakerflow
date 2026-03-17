@@ -535,12 +535,12 @@ export default function FinancePage() {
                                     {/* Info */}
                                     <div className="card-info">
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                                            <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{inv.client.name}</span>
+                                            <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{inv.contract?.name || inv.notes || 'Fatura avulsa'}</span>
                                             <span style={{ fontSize: '0.65rem', fontWeight: 600, padding: '1px 8px', borderRadius: 6, background: `${statusColor(inv.status)}15`, color: statusColor(inv.status) }}>{statusLabel(inv.status)}</span>
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 3, fontSize: '0.76rem', color: 'var(--color-text-muted)', flexWrap: 'wrap' }}>
                                             <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><Calendar size={11} /> Venc: {new Date(inv.dueDate).toLocaleDateString('pt-BR')}</span>
-                                            {inv.contract?.name && <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><ClipboardList size={11} /> {inv.contract.name}</span>}
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><User size={11} /> {inv.client.name}</span>
                                             {inv.paidAt && <span style={{ color: '#22c55e' }}>Pago em {new Date(inv.paidAt).toLocaleDateString('pt-BR')}</span>}
                                         </div>
                                     </div>
