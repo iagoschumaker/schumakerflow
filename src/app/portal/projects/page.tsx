@@ -526,12 +526,15 @@ export default function PortalProjectsPage() {
                                                                                     {file.driveFileId && !file.driveFileId.startsWith('mock_') && (
                                                                                         <div style={{ background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                                                             {file.mimeType?.startsWith('video/') ? (
-                                                                                                <iframe
-                                                                                                    src={`https://drive.google.com/file/d/${file.driveFileId}/preview`}
-                                                                                                    style={{ width: '100%', height: 360, border: 'none' }}
-                                                                                                    allow="autoplay; encrypted-media"
-                                                                                                    allowFullScreen
-                                                                                                />
+                                                                                                <video
+                                                                                                    controls
+                                                                                                    preload="metadata"
+                                                                                                    style={{ width: '100%', maxHeight: 500, background: '#000' }}
+                                                                                                    playsInline
+                                                                                                >
+                                                                                                    <source src={`/api/files/${file.id}/stream`} type={file.mimeType || 'video/mp4'} />
+                                                                                                    Seu navegador não suporta reprodução de vídeo.
+                                                                                                </video>
                                                                                             ) : file.mimeType?.startsWith('image/') ? (
                                                                                                 <img
                                                                                                     src={`https://lh3.googleusercontent.com/d/${file.driveFileId}`}

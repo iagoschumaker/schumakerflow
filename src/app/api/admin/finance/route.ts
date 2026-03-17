@@ -26,7 +26,9 @@ async function autoCreateNextInvoice(tenantId: string, contractId: string, after
         const [y, m] = afterMonth.split('-').map(Number);
         targetDate = new Date(y, m, 1); // next month after afterMonth
     } else {
-        targetDate = new Date(); // current month
+        // First invoice: use contract startDate month, NOT current date
+        const sd = new Date(contract.startDate);
+        targetDate = new Date(sd.getFullYear(), sd.getMonth(), 1);
     }
     const targetMonth = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
 
