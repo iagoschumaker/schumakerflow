@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import {
     ArrowLeft, Film, Image, FileText, FileSpreadsheet, File, Trash2,
     Loader2, Eye, EyeOff, Download, ExternalLink, Clock, Calendar,
-    FolderOpen, ChevronDown, ChevronUp, Search, Filter, X
+    FolderOpen, ChevronDown, ChevronUp, Search, Filter, X, Upload, CheckCircle
 } from 'lucide-react';
 
 interface FileItem {
@@ -46,6 +46,74 @@ export default function ProjectDetailPage() {
     const [deleting, setDeleting] = useState<string | null>(null);
     const [expandedFile, setExpandedFile] = useState<string | null>(null);
     const [searchText, setSearchText] = useState('');
+
+    // Upload state
+    const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+    const [uploadKind, setUploadKind] = useState('FINAL');
+    const [uploading, setUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+    const [dragOver, setDragOver] = useState(false);
+    const fileInputRef = useState<HTMLInputElement | null>(null);
+
+    const handleUpload = async () => {
+        if (!uploadFiles.length || !project) return;
+        setUploading(true);
+        const results: string[] = [];
+
+        for (const file of uploadFiles) {
+            setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('projectId', project.id);
+                formData.append('kind', uploadKind);
+                formData.append('isVisible', 'true');
+
+                const xhr = new XMLHttpRequest();
+                await new Promise<void>((resolve, reject) => {
+                    xhr.upload.onprogress = (e) => {
+                        if (e.lengthComputable) {
+                            setUploadProgress(prev => ({ ...prev, [file.name]: Math.round((e.loaded / e.total) * 100) }));
+                        }
+                    };
+                    xhr.onload = () => {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            results.push(file.name);
+                            resolve();
+                        } else {
+                            reject(new Error(`Upload failed: ${xhr.statusText}`));
+                        }
+                    };
+                    xhr.onerror = () => reject(new Error('Upload failed'));
+                    xhr.open('POST', '/api/admin/files');
+                    xhr.send(formData);
+                });
+            } catch (e) {
+                showToast(`Erro no upload de ${file.name}`, 'error');
+            }
+        }
+
+        if (results.length > 0) {
+            showToast(`${results.length} arquivo(s) enviado(s) com sucesso!`, 'success');
+        }
+        setUploadFiles([]);
+        setUploadProgress({});
+        setUploading(false);
+        loadProject();
+    };
+
+    const handleFileDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        setDragOver(false);
+        const files = Array.from(e.dataTransfer.files);
+        if (files.length) setUploadFiles(prev => [...prev, ...files]);
+    };
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length) setUploadFiles(prev => [...prev, ...files]);
+        e.target.value = '';
+    };
 
     // Date filter — default: current month
     const now = new Date();
@@ -253,6 +321,110 @@ export default function ProjectDetailPage() {
             </div>
 
             <div className="page-content">
+                {/* Upload Zone */}
+                <div
+                    className="card"
+                    style={{
+                        marginBottom: 'var(--space-4)', padding: 'var(--space-3) var(--space-4)',
+                        border: dragOver ? '2px dashed var(--color-primary)' : '2px dashed var(--color-border)',
+                        background: dragOver ? 'rgba(99,102,241,0.05)' : 'transparent',
+                        transition: 'all 0.2s',
+                    }}
+                    onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={handleFileDrop}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                        <Upload size={18} style={{ color: 'var(--color-primary)' }} />
+                        <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>Upload para este projeto</span>
+
+                        <select
+                            value={uploadKind}
+                            onChange={(e) => setUploadKind(e.target.value)}
+                            style={{
+                                padding: '4px 10px', borderRadius: 6, fontSize: '0.78rem', fontWeight: 600,
+                                border: '1px solid var(--color-border)', background: 'var(--color-bg)',
+                                color: 'var(--color-text)', cursor: 'pointer',
+                            }}
+                        >
+                            <option value="PREVIEW">Preview</option>
+                            <option value="FINAL">Final</option>
+                            <option value="RAW">Bruto</option>
+                            <option value="OTHER">Outro</option>
+                        </select>
+
+                        <label
+                            style={{
+                                padding: '5px 14px', borderRadius: 'var(--radius-md)', cursor: 'pointer',
+                                background: 'var(--color-primary)', color: '#fff', fontWeight: 600,
+                                fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 5,
+                            }}
+                        >
+                            <Upload size={14} /> Escolher arquivos
+                            <input type="file" multiple hidden onChange={handleFileSelect} />
+                        </label>
+
+                        {uploadFiles.length > 0 && !uploading && (
+                            <button
+                                className="btn btn-sm"
+                                onClick={handleUpload}
+                                style={{
+                                    background: '#22c55e', border: 'none', color: '#fff', fontWeight: 700,
+                                    display: 'flex', alignItems: 'center', gap: 5, padding: '5px 14px',
+                                }}
+                            >
+                                <CheckCircle size={14} /> Enviar {uploadFiles.length}
+                            </button>
+                        )}
+
+                        {uploading && (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.8rem', color: 'var(--color-primary)' }}>
+                                <Loader2 size={14} className="animate-spin" /> Enviando...
+                            </span>
+                        )}
+                    </div>
+
+                    {/* Queued files */}
+                    {uploadFiles.length > 0 && (
+                        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {uploadFiles.map((f, i) => (
+                                <div key={i} style={{
+                                    display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem',
+                                    padding: '4px 8px', borderRadius: 6, background: 'var(--color-bg-secondary)',
+                                }}>
+                                    <File size={12} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+                                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
+                                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.7rem', flexShrink: 0 }}>
+                                        {(f.size / (1024 * 1024)).toFixed(1)} MB
+                                    </span>
+                                    {uploadProgress[f.name] !== undefined && uploadProgress[f.name] < 100 && (
+                                        <div style={{ width: 60, height: 5, borderRadius: 3, background: 'var(--color-border)', overflow: 'hidden', flexShrink: 0 }}>
+                                            <div style={{ width: `${uploadProgress[f.name]}%`, height: '100%', background: 'var(--color-primary)', transition: 'width 0.2s' }} />
+                                        </div>
+                                    )}
+                                    {uploadProgress[f.name] === 100 && (
+                                        <CheckCircle size={13} style={{ color: '#22c55e', flexShrink: 0 }} />
+                                    )}
+                                    {!uploading && (
+                                        <button
+                                            onClick={() => setUploadFiles(prev => prev.filter((_, j) => j !== i))}
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: 2, display: 'flex', flexShrink: 0 }}
+                                        >
+                                            <X size={12} />
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {uploadFiles.length === 0 && (
+                        <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: '6px 0 0', textAlign: 'center' }}>
+                            Arraste arquivos aqui ou clique em &quot;Escolher arquivos&quot;
+                        </p>
+                    )}
+                </div>
+
                 {/* Filter bar */}
                 <div className="card" style={{ marginBottom: 'var(--space-4)', padding: 'var(--space-3) var(--space-4)' }}>
                     {/* Preset buttons */}
