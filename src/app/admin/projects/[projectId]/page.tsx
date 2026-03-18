@@ -334,7 +334,7 @@ export default function ProjectDetailPage() {
                     onDragLeave={() => setDragOver(false)}
                     onDrop={handleFileDrop}
                 >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
                         <Upload size={18} style={{ color: 'var(--color-primary)' }} />
                         <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>Upload para este projeto</span>
 
