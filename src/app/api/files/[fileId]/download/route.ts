@@ -19,6 +19,51 @@ export async function GET(
     const { fileId } = await params;
 
     try {
+        const shareToken = request.nextUrl.searchParams.get('share');
+
+        // === SHARE LINK AUTH (no login required) ===
+        if (shareToken) {
+            const link = await prisma.shareLink.findUnique({
+                where: { token: shareToken },
+            });
+
+            if (!link || !link.isActive) {
+                return NextResponse.json({ error: 'Link inválido' }, { status: 403 });
+            }
+            if (link.expiresAt && new Date(link.expiresAt) < new Date()) {
+                return NextResponse.json({ error: 'Link expirado' }, { status: 410 });
+            }
+
+            // Find the file and verify it belongs to the shared project
+            const file = await prisma.file.findUnique({
+                where: { id: fileId },
+                include: { project: true },
+            });
+
+            if (!file || file.projectId !== link.projectId || !file.isVisible) {
+                return NextResponse.json({ error: 'File not found or not accessible' }, { status: 404 });
+            }
+
+            const driveFileId = file.driveFileId || `mock_file_${file.id}`;
+
+            // Increment download count on share link
+            await prisma.shareLink.update({
+                where: { id: link.id },
+                data: { downloadCount: { increment: 1 } },
+            });
+
+            const { stream, metadata } = await downloadFileFromDrive(file.tenantId, driveFileId);
+
+            return new NextResponse(stream, {
+                headers: {
+                    'Content-Type': metadata.mimeType,
+                    'Content-Disposition': `attachment; filename="${encodeURIComponent(file.name)}"`,
+                    ...(metadata.size > 0 ? { 'Content-Length': String(metadata.size) } : {}),
+                },
+            });
+        }
+
+        // === NORMAL SESSION AUTH ===
         // 1. Validate session
         const session = await getSession();
         if (!session) {

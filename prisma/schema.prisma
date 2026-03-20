@@ -174,6 +174,7 @@ model Tenant {
   auditLogs           AuditLog[]
   clientAccess        ClientAccess[]
   expenses            Expense[]
+  shareLinks          ShareLink[]
 
   @@index([slug])
   @@index([subdomain])
@@ -326,6 +327,7 @@ model Project {
   tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   client          Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
   files           File[]
+  shareLinks      ShareLink[]
 
   @@index([tenantId])
   @@index([clientId])
@@ -572,13 +574,18 @@ model ShareLink {
   password    String?
   maxViews    Int?
   viewCount   Int       @default(0)
+  downloadCount Int     @default(0)
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
 
   file        File?     @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  project     Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tenant      Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([token])
   @@index([fileId])
+  @@index([projectId])
+  @@index([tenantId])
 }
 
 // ==================== EXPENSE ====================

@@ -6,7 +6,8 @@ import { useParams, useRouter } from 'next/navigation';
 import {
     ArrowLeft, Film, Image, FileText, FileSpreadsheet, File, Trash2,
     Loader2, Eye, EyeOff, Download, ExternalLink, Clock, Calendar,
-    FolderOpen, ChevronDown, ChevronUp, Search, Filter, X, Upload, CheckCircle
+    FolderOpen, ChevronDown, ChevronUp, Search, Filter, X, Upload, CheckCircle,
+    Link2, Copy, Trash
 } from 'lucide-react';
 
 interface FileItem {
@@ -128,9 +129,48 @@ export default function ProjectDetailPage() {
         setLoading(false);
     };
 
-    useEffect(() => { loadProject(); }, [projectId]);
+    useEffect(() => { loadProject(); loadShareLinks(); }, [projectId]);
 
     const { showToast, showConfirm } = useToast();
+
+    // Share link state
+    const [shareLinks, setShareLinks] = useState<Array<{ id: string; token: string; label: string | null; expiresAt: string; isActive: boolean; downloadCount: number; viewCount: number; shareUrl?: string }>>([]);
+    const [shareLoading, setShareLoading] = useState(false);
+    const [showSharePanel, setShowSharePanel] = useState(false);
+
+    const loadShareLinks = async () => {
+        try {
+            const res = await fetch(`/api/admin/projects/${projectId}/share`);
+            const d = await res.json();
+            if (d.data) setShareLinks(d.data.filter((l: any) => l.isActive));
+        } catch { /* */ }
+    };
+
+    const generateShareLink = async (days: number = 7) => {
+        setShareLoading(true);
+        try {
+            const res = await fetch(`/api/admin/projects/${projectId}/share`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ expiresInDays: days }),
+            });
+            const d = await res.json();
+            if (d.data?.shareUrl) {
+                await navigator.clipboard.writeText(d.data.shareUrl);
+                showToast('Link copiado para a área de transferência!', 'success');
+                loadShareLinks();
+            }
+        } catch {
+            showToast('Erro ao gerar link', 'error');
+        }
+        setShareLoading(false);
+    };
+
+    const deactivateShareLink = async (linkId: string) => {
+        await fetch(`/api/admin/projects/${projectId}/share?id=${linkId}`, { method: 'DELETE' });
+        showToast('Link desativado', 'success');
+        loadShareLinks();
+    };
 
     const handleDelete = async (fileId: string) => {
         const ok = await showConfirm({
@@ -312,10 +352,113 @@ export default function ProjectDetailPage() {
                             }}>
                                 {statusLabel(project.status)}
                             </span>
+                            <button
+                                onClick={() => setShowSharePanel(!showSharePanel)}
+                                className="btn btn-sm"
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px',
+                                    background: '#8b5cf620', border: '1px solid #8b5cf640', color: '#8b5cf6', fontWeight: 600, fontSize: '0.78rem',
+                                }}
+                            >
+                                <Link2 size={14} /> Compartilhar
+                            </button>
                         </div>
                         <p className="text-muted" style={{ marginTop: 4 }}>
                             {project.client?.name} • {project._count.files} arquivo(s)
                         </p>
+
+                        {/* Share Panel */}
+                        {showSharePanel && (
+                            <div style={{
+                                marginTop: 12, padding: 14, borderRadius: 'var(--radius-md)',
+                                background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)',
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+                                    <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>Links temporários</span>
+                                    <button
+                                        onClick={() => generateShareLink(7)}
+                                        disabled={shareLoading}
+                                        className="btn btn-sm"
+                                        style={{
+                                            background: '#8b5cf6', border: 'none', color: '#fff', fontWeight: 600,
+                                            display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', fontSize: '0.78rem',
+                                        }}
+                                    >
+                                        {shareLoading ? <Loader2 size={13} className="animate-spin" /> : <Link2 size={13} />}
+                                        Gerar link (7 dias)
+                                    </button>
+                                    <button
+                                        onClick={() => generateShareLink(30)}
+                                        disabled={shareLoading}
+                                        className="btn btn-sm"
+                                        style={{
+                                            background: '#6366f1', border: 'none', color: '#fff', fontWeight: 600,
+                                            display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', fontSize: '0.78rem',
+                                        }}
+                                    >
+                                        30 dias
+                                    </button>
+                                </div>
+
+                                {shareLinks.length > 0 ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        {shareLinks.map(link => {
+                                            const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+                                            const url = `${baseUrl}/share/${link.token}`;
+                                            const expires = new Date(link.expiresAt);
+                                            const daysLeft = Math.max(0, Math.ceil((expires.getTime() - Date.now()) / (86400000)));
+                                            const expired = daysLeft <= 0;
+
+                                            return (
+                                                <div key={link.id} style={{
+                                                    display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem',
+                                                    padding: '8px 10px', borderRadius: 8, background: 'var(--color-bg)',
+                                                    border: '1px solid var(--color-border)', flexWrap: 'wrap',
+                                                }}>
+                                                    <Link2 size={13} style={{ color: expired ? '#ef4444' : '#8b5cf6', flexShrink: 0 }} />
+                                                    <span style={{
+                                                        flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                                        color: expired ? '#6b7280' : 'var(--color-text)', minWidth: 100,
+                                                    }}>
+                                                        {url}
+                                                    </span>
+                                                    <span style={{
+                                                        fontSize: '0.7rem', fontWeight: 600, flexShrink: 0,
+                                                        color: expired ? '#ef4444' : daysLeft <= 2 ? '#f59e0b' : '#22c55e',
+                                                    }}>
+                                                        {expired ? 'Expirado' : `${daysLeft}d restante(s)`}
+                                                    </span>
+                                                    <span style={{ fontSize: '0.68rem', color: '#6b7280', flexShrink: 0 }}>
+                                                        {link.viewCount} visita(s) • {link.downloadCount} download(s)
+                                                    </span>
+                                                    <button
+                                                        onClick={async () => {
+                                                            await navigator.clipboard.writeText(url);
+                                                            showToast('Link copiado!', 'success');
+                                                        }}
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8b5cf6', padding: 3, display: 'flex', flexShrink: 0 }}
+                                                        title="Copiar link"
+                                                    >
+                                                        <Copy size={13} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => deactivateShareLink(link.id)}
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 3, display: 'flex', flexShrink: 0 }}
+                                                        title="Desativar link"
+                                                    >
+                                                        <Trash size={13} />
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: 0 }}>
+                                        Nenhum link ativo. Gere um link para compartilhar com clientes sem conta.
+                                    </p>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
