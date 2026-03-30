@@ -3,6 +3,12 @@ import prisma from '@/lib/db';
 import { getSession } from '@/lib/auth/session';
 import { downloadFileFromDrive } from '@/lib/drive/files';
 
+function makeContentDisposition(filename: string, disposition: 'attachment' | 'inline' = 'attachment') {
+    const asciiName = filename.replace(/[^\x20-\x7E]/g, '_');
+    const utf8Name = encodeURIComponent(filename).replace(/'/g, '%27');
+    return `${disposition}; filename="${asciiName}"; filename*=UTF-8''${utf8Name}`;
+}
+
 interface RouteParams {
     params: Promise<{ fileId: string }>;
 }
@@ -58,11 +64,15 @@ export async function GET(
 
         const { stream, metadata } = await downloadFileFromDrive(file.tenantId, driveFileId);
 
-        return new NextResponse(stream, {
+        // Buffer for iOS Safari compatibility
+        const response = new Response(stream);
+        const buffer = await response.arrayBuffer();
+
+        return new NextResponse(buffer, {
             headers: {
                 'Content-Type': metadata.mimeType || 'application/octet-stream',
-                'Content-Disposition': `inline; filename="${encodeURIComponent(file.name)}"`,
-                ...(metadata.size > 0 ? { 'Content-Length': String(metadata.size) } : {}),
+                'Content-Disposition': makeContentDisposition(file.name, 'inline'),
+                'Content-Length': String(buffer.byteLength),
                 'Accept-Ranges': 'bytes',
                 'Cache-Control': 'private, max-age=3600',
             },

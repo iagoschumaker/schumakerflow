@@ -4,6 +4,15 @@ import { getSession } from '@/lib/auth/session';
 import { downloadFileFromDrive } from '@/lib/drive/files';
 import { isDownloadBlocked } from '@/lib/finance/delinquency';
 
+// RFC 5987 compliant Content-Disposition for cross-browser filename support
+function makeContentDisposition(filename: string, disposition: 'attachment' | 'inline' = 'attachment') {
+    // ASCII-safe fallback: replace non-ASCII chars with underscores
+    const asciiName = filename.replace(/[^\x20-\x7E]/g, '_');
+    // UTF-8 encoded version for modern browsers
+    const utf8Name = encodeURIComponent(filename).replace(/'/g, '%27');
+    return `${disposition}; filename="${asciiName}"; filename*=UTF-8''${utf8Name}`;
+}
+
 interface RouteParams {
     params: Promise<{ fileId: string }>;
 }
@@ -54,11 +63,15 @@ export async function GET(
 
             const { stream, metadata } = await downloadFileFromDrive(file.tenantId, driveFileId);
 
-            return new NextResponse(stream, {
+            // Buffer the stream for iOS Safari compatibility
+            const response = new Response(stream);
+            const buffer = await response.arrayBuffer();
+
+            return new NextResponse(buffer, {
                 headers: {
                     'Content-Type': metadata.mimeType,
-                    'Content-Disposition': `attachment; filename="${encodeURIComponent(file.name)}"`,
-                    ...(metadata.size > 0 ? { 'Content-Length': String(metadata.size) } : {}),
+                    'Content-Disposition': makeContentDisposition(file.name),
+                    'Content-Length': String(buffer.byteLength),
                 },
             });
         }
@@ -157,12 +170,15 @@ export async function GET(
                 });
             }
 
-            // Return streaming response
-            return new NextResponse(stream, {
+            // Return buffered response (iOS Safari compatible)
+            const response = new Response(stream);
+            const buffer = await response.arrayBuffer();
+
+            return new NextResponse(buffer, {
                 headers: {
                     'Content-Type': metadata.mimeType,
-                    'Content-Disposition': `attachment; filename="${encodeURIComponent(file.name)}"`,
-                    ...(metadata.size > 0 ? { 'Content-Length': String(metadata.size) } : {}),
+                    'Content-Disposition': makeContentDisposition(file.name),
+                    'Content-Length': String(buffer.byteLength),
                 },
             });
         } catch (downloadError) {
