@@ -192,7 +192,7 @@ export default function SelectContextPage() {
                         </button>
                     </div>
 
-                    <div style={{ textAlign: 'center', marginTop: 'var(--space-4)', fontSize: 'var(--font-size-xs)', color: 'rgba(255,255,255,0.3)' }}>
+                    <div style={{ textAlign: 'center', marginTop: 'var(--space-4)', fontSize: 'var(--font-size-xs)', color: 'var(--login-footer)' }}>
                         © {new Date().getFullYear()} SFlow. Todos os direitos reservados.
                     </div>
                 </div>

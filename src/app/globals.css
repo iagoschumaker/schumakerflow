@@ -89,6 +89,21 @@
   --transition-normal: 200ms ease;
   --transition-slow: 300ms ease;
 
+  /* Login — theme tokens */
+  --login-bg: #f0f4ff;
+  --login-card-bg: rgba(255, 255, 255, 0.92);
+  --login-card-border: rgba(0, 122, 255, 0.15);
+  --login-card-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), 0 0 60px rgba(0, 122, 255, 0.04);
+  --login-logo-title: var(--color-text);
+  --login-logo-sub: var(--color-text-muted);
+  --login-label: var(--color-text-secondary);
+  --login-input-bg: rgba(0, 0, 0, 0.03);
+  --login-input-border: var(--color-border);
+  --login-input-color: var(--color-text);
+  --login-input-placeholder: var(--color-text-muted);
+  --login-footer: var(--color-text-muted);
+  --login-link-muted: var(--color-text-muted);
+
   /* Color transition for theme switching */
   color-scheme: light;
 }
@@ -142,6 +157,21 @@
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
   --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
+
+  /* Login — dark theme tokens */
+  --login-bg: #070b14;
+  --login-card-bg: rgba(15, 20, 35, 0.7);
+  --login-card-border: rgba(99, 102, 241, 0.15);
+  --login-card-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 80px rgba(99, 102, 241, 0.05);
+  --login-logo-title: #fff;
+  --login-logo-sub: rgba(255, 255, 255, 0.5);
+  --login-label: rgba(255, 255, 255, 0.8);
+  --login-input-bg: rgba(255, 255, 255, 0.05);
+  --login-input-border: rgba(255, 255, 255, 0.1);
+  --login-input-color: #fff;
+  --login-input-placeholder: rgba(255, 255, 255, 0.3);
+  --login-footer: rgba(255, 255, 255, 0.3);
+  --login-link-muted: rgba(255, 255, 255, 0.5);
 
   color-scheme: dark;
 }
@@ -746,7 +776,7 @@ tbody tr:last-child td {
 .login-container {
   min-height: 100vh;
   display: flex;
-  background: #070b14;
+  background: var(--login-bg);
   position: relative;
   overflow: hidden;
 }
@@ -827,12 +857,12 @@ tbody tr:last-child td {
 }
 
 .login-card {
-  background: rgba(15, 20, 35, 0.7);
+  background: var(--login-card-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(99, 102, 241, 0.15);
+  border: 1px solid var(--login-card-border);
   border-radius: var(--radius-xl);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 80px rgba(99, 102, 241, 0.05);
+  box-shadow: var(--login-card-shadow);
   padding: var(--space-8);
   width: 100%;
   max-width: 400px;
@@ -853,27 +883,27 @@ tbody tr:last-child td {
 .login-logo h1 {
   font-size: var(--font-size-xl);
   font-weight: 700;
-  color: #fff;
+  color: var(--login-logo-title);
   margin-bottom: var(--space-1);
 }
 
 .login-logo p {
   font-size: var(--font-size-xs);
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--login-logo-sub);
 }
 
 .login-card .form-label {
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--login-label);
 }
 
 .login-card .form-input {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: var(--login-input-bg);
+  border-color: var(--login-input-border);
+  color: var(--login-input-color);
 }
 
 .login-card .form-input::placeholder {
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--login-input-placeholder);
 }
 
 .login-card .form-input:focus {

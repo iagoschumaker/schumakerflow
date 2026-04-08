@@ -161,8 +161,8 @@ export default function ProjectsPage() {
                 </div>
 
                 {loading ? (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 'var(--space-4)' }}>
-                        {[1, 2, 3, 4].map(i => <div key={i} className="card animate-pulse" style={{ height: 180 }} />)}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 'var(--space-3)' }}>
+                        {[1, 2, 3, 4].map(i => <div key={i} className="card animate-pulse" style={{ height: 160 }} />)}
                     </div>
                 ) : filtered.length === 0 ? (
                     <div className="card empty-state">
@@ -172,7 +172,7 @@ export default function ProjectsPage() {
                         {!search && <p className="text-sm text-muted mt-2">Use o botão + para criar o primeiro.</p>}
                     </div>
                 ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 'var(--space-4)' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 'var(--space-3)' }}>
                         {filtered.map((p) => (
                             <div
                                 key={p.id}

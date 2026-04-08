@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useToast } from '@/components/Toast';
 import {
     ArrowLeft, Pencil, Trash2, Users, Mail, Phone, Calendar,
-    FolderKanban, FileText, Shield, Loader2, X, UserPlus, Save, Link
+    FolderKanban, FileText, Shield, Loader2, X, UserPlus, Save, Link, UserMinus
 } from 'lucide-react';
 
 interface ClientDetail {
@@ -136,6 +136,28 @@ export default function ClientDetailPage() {
             setShowUserModal(false);
             loadClient();
         } finally { setSavingUser(false); }
+    };
+
+    const handleUnlinkUser = async (accessId: string, userName: string) => {
+        const ok = await showConfirm({
+            title: 'Desvincular Acesso',
+            message: `Tem certeza que deseja desvincular o acesso de "${userName}" deste cliente?`,
+            confirmText: 'Desvincular',
+            variant: 'danger',
+        });
+        if (!ok) return;
+        try {
+            const res = await fetch(`/api/admin/client-users/${accessId}`, { method: 'DELETE' });
+            if (!res.ok) {
+                const data = await res.json();
+                showToast(data.error || 'Erro ao desvincular', 'error');
+                return;
+            }
+            showToast('Acesso desvinculado!', 'success');
+            loadClient();
+        } catch {
+            showToast('Erro de conexão', 'error');
+        }
     };
 
     // --- Helpers ---
@@ -298,6 +320,20 @@ export default function ClientDetailPage() {
                                                 <span className={`badge ${u.isActive ? 'badge-success' : 'badge-gray'}`} style={{ fontSize: '0.6rem', flexShrink: 0 }}>
                                                     {u.isActive ? 'Ativo' : 'Inativo'}
                                                 </span>
+                                                <button
+                                                    onClick={() => handleUnlinkUser(u.id, u.name)}
+                                                    title="Desvincular acesso"
+                                                    style={{
+                                                        background: 'none', border: 'none', cursor: 'pointer',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        color: 'var(--color-danger)', padding: 4, borderRadius: 4,
+                                                        flexShrink: 0, opacity: 0.7, transition: 'opacity 0.15s',
+                                                    }}
+                                                    onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+                                                    onMouseLeave={e => (e.currentTarget.style.opacity = '0.7')}
+                                                >
+                                                    <UserMinus size={15} />
+                                                </button>
                                             </div>
                                         ))}
                                     </div>

@@ -125,7 +125,7 @@ export default function LoginPage() {
                                         placeholder="••••••••" required style={{ paddingRight: 40 }} />
                                     <button type="button" onClick={() => setShowPw(!showPw)} style={{
                                         position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-                                        background: 'none', border: 'none', cursor: 'pointer', display: 'flex', color: 'rgba(255,255,255,0.4)',
+                                        background: 'none', border: 'none', cursor: 'pointer', display: 'flex', color: 'var(--login-input-placeholder)',
                                     }}>
                                         {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
                                     </button>
@@ -143,7 +143,7 @@ export default function LoginPage() {
                                     cursor: 'pointer', fontSize: 'var(--font-size-sm)', fontFamily: 'var(--font-family)',
                                 }}>Esqueceu a senha?</button>
                                 <button type="button" onClick={() => router.push('/register')} style={{
-                                    background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)',
+                                    background: 'none', border: 'none', color: 'var(--login-link-muted)',
                                     cursor: 'pointer', fontSize: 'var(--font-size-sm)', fontFamily: 'var(--font-family)',
                                 }}>Não tem conta? <span style={{ color: 'var(--color-primary)' }}>Cadastre-se</span></button>
                             </div>
@@ -171,7 +171,7 @@ export default function LoginPage() {
                         </div>
                     )}
 
-                    <div style={{ textAlign: 'center', marginTop: 'var(--space-6)', fontSize: 'var(--font-size-xs)', color: 'rgba(255,255,255,0.3)' }}>
+                    <div style={{ textAlign: 'center', marginTop: 'var(--space-6)', fontSize: 'var(--font-size-xs)', color: 'var(--login-footer)' }}>
                         © {new Date().getFullYear()} SFlow. Todos os direitos reservados.
                     </div>
                 </div>

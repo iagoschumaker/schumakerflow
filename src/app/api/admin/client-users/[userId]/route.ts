@@ -115,5 +115,5 @@ export const DELETE = withAuth(
 
         return apiSuccess({ message: 'Acesso removido' });
     },
-    { roles: ['SUPERADMIN'] }  // ONLY superadmin can unlink/delete
+    { roles: ['SUPERADMIN', 'TENANT_ADMIN'] }
 );
