@@ -47,20 +47,19 @@ async function autoCreateNextInvoice(tenantId: string, contractId: string, after
     console.log(`[autoCreateNextInvoice] targetMonth=${targetMonth}`);
 
     // Check idempotency - don't create if a PENDING or OVERDUE invoice already exists for this month
-    const idempotencyKey = `auto_${contract.id}_${targetMonth}`;
+    const baseIdempotencyKey = `auto_${contract.id}_${targetMonth}`;
+    
+    // Check by referenceMonth only (the actual month of the invoice, not the key)
     const existing = await prisma.invoice.findFirst({
         where: {
             tenantId,
             contractId,
+            referenceMonth: targetMonth,
             status: { in: ['PENDING', 'OVERDUE'] },
-            OR: [
-                { referenceMonth: targetMonth },
-                { idempotencyKey },
-            ],
         },
     });
     if (existing) {
-        console.log(`[autoCreateNextInvoice] existing invoice found: id=${existing.id}, status=${existing.status}, refMonth=${existing.referenceMonth}, idempKey=${existing.idempotencyKey}`);
+        console.log(`[autoCreateNextInvoice] existing PENDING/OVERDUE invoice found for ${targetMonth}: id=${existing.id}`);
         return existing;
     }
 
@@ -70,8 +69,11 @@ async function autoCreateNextInvoice(tenantId: string, contractId: string, after
     const typeLabel = { MONTHLY: 'Mensalidade', PER_VIDEO: 'Por Arquivo', PER_PROJECT: 'Por Projeto', ONE_OFF: 'Avulso' }[contract.type as string] || contract.type;
     const itemType = { MONTHLY: 'MONTHLY_FEE', PER_VIDEO: 'VIDEO', PER_PROJECT: 'PROJECT', ONE_OFF: 'ONE_OFF' }[contract.type as string] || 'ONE_OFF';
 
+    // Use a unique idempotencyKey with timestamp to avoid collisions with old invoices
+    const idempotencyKey = `auto_${contract.id}_${targetMonth}_${Date.now()}`;
+
     try {
-        console.log(`[autoCreateNextInvoice] creating invoice: dueDate=${dueDate.toISOString()}, amount=${amount}, idempotencyKey=${idempotencyKey}`);
+        console.log(`[autoCreateNextInvoice] creating invoice: dueDate=${dueDate.toISOString()}, amount=${amount}, targetMonth=${targetMonth}`);
         const invoice = await prisma.invoice.create({
             data: {
                 tenantId,
@@ -88,19 +90,10 @@ async function autoCreateNextInvoice(tenantId: string, contractId: string, after
             },
         });
 
-        console.log(`[autoCreateNextInvoice] invoice CREATED: id=${invoice.id}`);
+        console.log(`[autoCreateNextInvoice] invoice CREATED: id=${invoice.id}, refMonth=${targetMonth}`);
         return invoice;
     } catch (e: unknown) {
-        // Handle unique constraint violation (idempotencyKey already exists)
-        if (e && typeof e === 'object' && 'code' in e && e.code === 'P2002') {
-            console.log(`[autoCreateNextInvoice] P2002 unique constraint error, looking up fallback`);
-            const fallback = await prisma.invoice.findFirst({
-                where: { tenantId, contractId, idempotencyKey },
-            });
-            console.log(`[autoCreateNextInvoice] fallback found: ${fallback?.id || 'null'}`);
-            return fallback;
-        }
-        console.error(`[autoCreateNextInvoice] unexpected error:`, e);
+        console.error(`[autoCreateNextInvoice] error creating invoice:`, e);
         throw e;
     }
 }
