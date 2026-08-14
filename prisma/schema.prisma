@@ -175,6 +175,9 @@ model Tenant {
   clientAccess        ClientAccess[]
   expenses            Expense[]
   shareLinks          ShareLink[]
+  // Briefings
+  briefingTemplates   BriefingTemplate[]
+  briefingCycles      BriefingCycle[]
 
   @@index([slug])
   @@index([subdomain])
@@ -268,6 +271,7 @@ model Client {
   contracts       Contract[]
   invoices        Invoice[]
   instagramAccounts ClientInstagram[]
+  briefingCycles    BriefingCycle[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -619,4 +623,172 @@ model Expense {
   @@index([date])
   @@index([referenceMonth])
   @@index([status])
+}
+
+// ==================== BRIEFINGS ====================
+
+enum BriefingTemplateSectionKind {
+  single
+  repeater
+}
+
+enum BriefingTemplateFieldType {
+  text
+  textarea
+  date
+  month
+  time
+  money
+  number
+  select
+  boolean
+  email
+  phone
+  url
+}
+
+enum BriefingTemplateFieldWidth {
+  half
+  full
+}
+
+enum BriefingCycleStatus {
+  draft
+  sent
+  in_progress
+  submitted
+  archived
+}
+
+model BriefingTemplate {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String
+  slug        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant   Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sections BriefingTemplateSection[]
+  cycles   BriefingCycle[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@map("briefing_templates")
+}
+
+model BriefingTemplateSection {
+  id               String                      @id @default(uuid())
+  templateId       String
+  title            String
+  description      String?
+  kind             BriefingTemplateSectionKind
+  repeaterItemLabel String?
+  minItems         Int?
+  maxItems         Int?
+  isOptional       Boolean                     @default(false)
+  sortOrder        Int
+
+  template BriefingTemplate       @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  fields   BriefingTemplateField[]
+
+  @@index([templateId])
+  @@map("briefing_template_sections")
+}
+
+model BriefingTemplateField {
+  id          String                     @id @default(uuid())
+  sectionId   String
+  key         String
+  label       String
+  hint        String?
+  placeholder String?
+  type        BriefingTemplateFieldType
+  options     Json?
+  isRequired  Boolean                    @default(false)
+  width       BriefingTemplateFieldWidth @default(half)
+  sortOrder   Int
+
+  section BriefingTemplateSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  answers BriefingAnswer[]
+
+  @@index([sectionId])
+  @@map("briefing_template_fields")
+}
+
+model BriefingCycle {
+  id             String             @id @default(uuid())
+  tenantId       String
+  clientId       String
+  templateId     String
+  referenceMonth DateTime           @db.Date
+  title          String?
+  status         BriefingCycleStatus @default(draft)
+  dueDate        DateTime?          @db.Date
+  submittedAt    DateTime?
+  createdBy      String
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  tenant   Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client   Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  template BriefingTemplate @relation(fields: [templateId], references: [id])
+  links    BriefingLink[]
+  answers  BriefingAnswer[]
+  events   BriefingEvent[]
+
+  @@unique([tenantId, clientId, templateId, referenceMonth])
+  @@index([tenantId, status])
+  @@index([tenantId, referenceMonth])
+  @@index([clientId])
+  @@map("briefing_cycles")
+}
+
+model BriefingLink {
+  id           String    @id @default(uuid())
+  cycleId      String
+  tokenHash    String    @unique
+  tokenPreview String
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  opensCount   Int       @default(0)
+  lastOpenedAt DateTime?
+
+  cycle BriefingCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@index([tokenHash])
+  @@index([cycleId])
+  @@map("briefing_links")
+}
+
+model BriefingAnswer {
+  id         String   @id @default(uuid())
+  cycleId    String
+  fieldId    String
+  groupIndex Int      @default(0)
+  value      Json
+  updatedAt  DateTime @updatedAt
+
+  cycle BriefingCycle          @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  field BriefingTemplateField  @relation(fields: [fieldId], references: [id])
+
+  @@unique([cycleId, fieldId, groupIndex])
+  @@index([cycleId])
+  @@map("briefing_answers")
+}
+
+model BriefingEvent {
+  id        String   @id @default(uuid())
+  cycleId   String
+  type      String
+  ipHash    String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  cycle BriefingCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@index([cycleId])
+  @@map("briefing_events")
 }
