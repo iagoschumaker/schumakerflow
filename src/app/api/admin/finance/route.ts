@@ -8,29 +8,43 @@ import { randomUUID } from 'crypto';
 
 // Helper: auto-create next invoice for a contract
 async function autoCreateNextInvoice(tenantId: string, contractId: string, afterMonth?: string) {
+    console.log(`[autoCreateNextInvoice] called: tenantId=${tenantId}, contractId=${contractId}, afterMonth=${afterMonth}`);
+
     const contract = await prisma.contract.findFirst({
         where: { id: contractId, tenantId, status: 'ACTIVE' },
         include: { client: true },
     });
-    if (!contract) return null;
+    if (!contract) {
+        console.log(`[autoCreateNextInvoice] contract not found or not ACTIVE`);
+        return null;
+    }
 
     const amount = Number(contract.monthlyAmount || contract.perVideoAmount || contract.perProjectAmount || contract.oneOffAmount || 0);
-    if (amount <= 0) return null;
+    if (amount <= 0) {
+        console.log(`[autoCreateNextInvoice] amount is 0 or negative: ${amount}`);
+        return null;
+    }
 
     // If contract has an end date and it's in the past, don't generate
-    if (contract.endDate && new Date(contract.endDate) < new Date()) return null;
+    if (contract.endDate && new Date(contract.endDate) < new Date()) {
+        console.log(`[autoCreateNextInvoice] contract endDate in past: ${contract.endDate}`);
+        return null;
+    }
 
     // Calculate the target month
     let targetDate: Date;
     if (afterMonth) {
         const [y, m] = afterMonth.split('-').map(Number);
         targetDate = new Date(y, m, 1); // next month after afterMonth
+        console.log(`[autoCreateNextInvoice] afterMonth=${afterMonth}, y=${y}, m=${m}, targetDate=${targetDate.toISOString()}`);
     } else {
         // First invoice: use contract startDate month, NOT current date
         const sd = new Date(contract.startDate);
         targetDate = new Date(sd.getFullYear(), sd.getMonth(), 1);
+        console.log(`[autoCreateNextInvoice] no afterMonth, using startDate: ${sd.toISOString()}`);
     }
     const targetMonth = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
+    console.log(`[autoCreateNextInvoice] targetMonth=${targetMonth}`);
 
     // Check idempotency - don't create if one already exists for this month (any status)
     const idempotencyKey = `auto_${contract.id}_${targetMonth}`;
@@ -44,7 +58,10 @@ async function autoCreateNextInvoice(tenantId: string, contractId: string, after
             ],
         },
     });
-    if (existing) return existing;
+    if (existing) {
+        console.log(`[autoCreateNextInvoice] existing invoice found: id=${existing.id}, status=${existing.status}, refMonth=${existing.referenceMonth}, idempKey=${existing.idempotencyKey}`);
+        return existing;
+    }
 
     const billingDay = contract.billingDay || 5;
     const dueDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), Math.min(billingDay, 28), 12, 0, 0);
@@ -53,6 +70,7 @@ async function autoCreateNextInvoice(tenantId: string, contractId: string, after
     const itemType = { MONTHLY: 'MONTHLY_FEE', PER_VIDEO: 'VIDEO', PER_PROJECT: 'PROJECT', ONE_OFF: 'ONE_OFF' }[contract.type as string] || 'ONE_OFF';
 
     try {
+        console.log(`[autoCreateNextInvoice] creating invoice: dueDate=${dueDate.toISOString()}, amount=${amount}, idempotencyKey=${idempotencyKey}`);
         const invoice = await prisma.invoice.create({
             data: {
                 tenantId,
@@ -69,15 +87,19 @@ async function autoCreateNextInvoice(tenantId: string, contractId: string, after
             },
         });
 
+        console.log(`[autoCreateNextInvoice] invoice CREATED: id=${invoice.id}`);
         return invoice;
     } catch (e: unknown) {
         // Handle unique constraint violation (idempotencyKey already exists)
         if (e && typeof e === 'object' && 'code' in e && e.code === 'P2002') {
+            console.log(`[autoCreateNextInvoice] P2002 unique constraint error, looking up fallback`);
             const fallback = await prisma.invoice.findFirst({
                 where: { tenantId, contractId, idempotencyKey },
             });
+            console.log(`[autoCreateNextInvoice] fallback found: ${fallback?.id || 'null'}`);
             return fallback;
         }
+        console.error(`[autoCreateNextInvoice] unexpected error:`, e);
         throw e;
     }
 }
