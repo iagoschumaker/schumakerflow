@@ -46,12 +46,13 @@ async function autoCreateNextInvoice(tenantId: string, contractId: string, after
     const targetMonth = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
     console.log(`[autoCreateNextInvoice] targetMonth=${targetMonth}`);
 
-    // Check idempotency - don't create if one already exists for this month (any status)
+    // Check idempotency - don't create if a PENDING or OVERDUE invoice already exists for this month
     const idempotencyKey = `auto_${contract.id}_${targetMonth}`;
     const existing = await prisma.invoice.findFirst({
         where: {
             tenantId,
             contractId,
+            status: { in: ['PENDING', 'OVERDUE'] },
             OR: [
                 { referenceMonth: targetMonth },
                 { idempotencyKey },
