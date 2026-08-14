@@ -87,6 +87,16 @@ export const GET = withAuth(
         const clientId = searchParams.get('clientId');
 
         if (tab === 'invoices') {
+            // Bug fix: auto-apply OVERDUE status to pending invoices past due date
+            await prisma.invoice.updateMany({
+                where: {
+                    tenantId: ctx.tenantId,
+                    status: 'PENDING',
+                    dueDate: { lt: new Date() },
+                },
+                data: { status: 'OVERDUE' },
+            });
+
             const where: Record<string, unknown> = { tenantId: ctx.tenantId };
             if (clientId) where.clientId = clientId;
             const status = searchParams.get('status');
@@ -336,7 +346,10 @@ export const POST = withAuth(
 
             // Auto-generate next invoice if contract is active and ongoing
             if (invoice.contractId) {
-                await autoCreateNextInvoice(ctx.tenantId, invoice.contractId, invoice.referenceMonth || undefined);
+                // Bug fix: fallback referenceMonth from dueDate when field is null
+                const refMonth = invoice.referenceMonth ||
+                    `${invoice.dueDate.getFullYear()}-${String(invoice.dueDate.getMonth() + 1).padStart(2, '0')}`;
+                await autoCreateNextInvoice(ctx.tenantId, invoice.contractId, refMonth);
             }
 
             return apiSuccess({ message: 'Invoice marked as paid' });
@@ -436,8 +449,8 @@ export const POST = withAuth(
                 if (existing) { skipped++; continue; }
 
                 const billingDay = contract.billingDay || 5;
+                // Bug fix: removed incorrect setMonth that was jumping dueDate to next month
                 const dueDate = new Date(year, month - 1, Math.min(billingDay, 28));
-                if (dueDate < new Date()) dueDate.setMonth(dueDate.getMonth() + 1);
 
                 const amount = Number(contract.monthlyAmount || 0);
                 if (amount <= 0) { skipped++; continue; }
