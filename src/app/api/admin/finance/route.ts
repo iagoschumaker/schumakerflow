@@ -33,8 +33,16 @@ async function autoCreateNextInvoice(tenantId: string, contractId: string, after
     const targetMonth = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
 
     // Check idempotency - don't create if one already exists for this month (any status)
+    const idempotencyKey = `auto_${contract.id}_${targetMonth}`;
     const existing = await prisma.invoice.findFirst({
-        where: { tenantId, contractId, referenceMonth: targetMonth },
+        where: {
+            tenantId,
+            contractId,
+            OR: [
+                { referenceMonth: targetMonth },
+                { idempotencyKey },
+            ],
+        },
     });
     if (existing) return existing;
 
@@ -44,23 +52,34 @@ async function autoCreateNextInvoice(tenantId: string, contractId: string, after
     const typeLabel = { MONTHLY: 'Mensalidade', PER_VIDEO: 'Por Arquivo', PER_PROJECT: 'Por Projeto', ONE_OFF: 'Avulso' }[contract.type as string] || contract.type;
     const itemType = { MONTHLY: 'MONTHLY_FEE', PER_VIDEO: 'VIDEO', PER_PROJECT: 'PROJECT', ONE_OFF: 'ONE_OFF' }[contract.type as string] || 'ONE_OFF';
 
-    const invoice = await prisma.invoice.create({
-        data: {
-            tenantId,
-            clientId: contract.clientId,
-            contractId: contract.id,
-            dueDate,
-            totalAmount: amount,
-            status: 'PENDING',
-            referenceMonth: targetMonth,
-            idempotencyKey: `auto_${contract.id}_${targetMonth}`,
-            items: {
-                create: [{ description: `${typeLabel} - ${contract.name} (${targetMonth})`, quantity: 1, unitPrice: amount, totalAmount: amount, type: itemType as any }],
+    try {
+        const invoice = await prisma.invoice.create({
+            data: {
+                tenantId,
+                clientId: contract.clientId,
+                contractId: contract.id,
+                dueDate,
+                totalAmount: amount,
+                status: 'PENDING',
+                referenceMonth: targetMonth,
+                idempotencyKey,
+                items: {
+                    create: [{ description: `${typeLabel} - ${contract.name} (${targetMonth})`, quantity: 1, unitPrice: amount, totalAmount: amount, type: itemType as any }],
+                },
             },
-        },
-    });
+        });
 
-    return invoice;
+        return invoice;
+    } catch (e: unknown) {
+        // Handle unique constraint violation (idempotencyKey already exists)
+        if (e && typeof e === 'object' && 'code' in e && e.code === 'P2002') {
+            const fallback = await prisma.invoice.findFirst({
+                where: { tenantId, contractId, idempotencyKey },
+            });
+            return fallback;
+        }
+        throw e;
+    }
 }
 
 // ==================== CONTRACTS ====================
