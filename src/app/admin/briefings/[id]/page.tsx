@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Copy, Check, RefreshCw, Ban, RotateCcw, Archive, ArchiveRestore, Eye, Download, FileJson, AlertTriangle, ArrowLeft, Link2, Clock, Pencil, Save, Trash2, X } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 import { buildBriefingExport, type ExportSection, type ExportAnswer } from '@/lib/briefings/export';
-import { formatMonthBR, formatDateBR, dbDateToIso } from '@/lib/briefings/dates';
+import { formatMonthBR, formatDateBR, formatDateTimeBR, dbDateToIso } from '@/lib/briefings/dates';
 
 interface CycleData {
     id: string;
@@ -462,7 +462,7 @@ export default function BriefingDetailPage() {
                                             {EVENT_LABEL[ev.type] || ev.type}
                                         </span>
                                         <span className="text-xs text-muted" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                            <Clock size={11} /> {new Date(ev.createdAt).toLocaleString('pt-BR')}
+                                            <Clock size={11} /> {formatDateTimeBR(ev.createdAt)}
                                         </span>
                                     </div>
                                 </div>

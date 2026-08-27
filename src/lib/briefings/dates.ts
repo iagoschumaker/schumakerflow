@@ -26,6 +26,20 @@ export function formatTimeBR(raw: string): string {
     return raw.replace(':', 'h');
 }
 
+// Full timestamps (not just @db.Date columns) get the same UTC-only rule as
+// the rest of this module: toLocaleString() renders using the runtime's
+// local timezone, which can differ between the Node server (SSR) and the
+// browser (hydration), producing a different string in each.
+export function formatDateTimeBR(iso: string): string {
+    const d = new Date(iso);
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const year = d.getUTCFullYear();
+    const hours = String(d.getUTCHours()).padStart(2, '0');
+    const minutes = String(d.getUTCMinutes()).padStart(2, '0');
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
+}
+
 // referenceMonth/dueDate come back from Prisma as Date objects for @db.Date columns.
 // Convert with UTC getters only -- local getters shift by the server's timezone offset.
 export function dbDateToIso(date: Date): string {
