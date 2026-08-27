@@ -1,0 +1,170 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { ClipboardList, Plus } from 'lucide-react';
+import { formatMonthBR, formatDateBR, dbDateToIso } from '@/lib/briefings/dates';
+
+interface Cycle {
+    id: string;
+    status: string;
+    referenceMonth: string;
+    dueDate: string | null;
+    client: { id: string; name: string };
+    template: { id: string; name: string };
+    links: { id: string }[];
+    answers: { updatedAt: string }[];
+    events: { createdAt: string }[];
+}
+
+interface Client { id: string; name: string; isActive: boolean }
+
+const STATUS_LABEL: Record<string, string> = {
+    draft: 'Rascunho',
+    sent: 'Enviado',
+    in_progress: 'Preenchendo',
+    submitted: 'Recebido',
+    archived: 'Arquivado',
+};
+
+const STATUS_BADGE: Record<string, string> = {
+    draft: 'badge-gray',
+    sent: 'badge-info',
+    in_progress: 'badge-warning',
+    submitted: 'badge-success',
+    archived: 'badge-gray',
+};
+
+export default function BriefingsListPage() {
+    const router = useRouter();
+    const [cycles, setCycles] = useState<Cycle[]>([]);
+    const [clients, setClients] = useState<Client[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [clientFilter, setClientFilter] = useState('');
+    const [statusFilter, setStatusFilter] = useState('');
+    const [monthFilter, setMonthFilter] = useState('');
+
+    useEffect(() => {
+        fetch('/api/admin/clients')
+            .then((r) => r.json())
+            .then((data) => setClients((data.data || []).filter((c: Client) => c.isActive)));
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- no data-fetching lib in this project (see other admin pages); this is the existing fetch-on-mount/fetch-on-filter-change pattern.
+        setLoading(true);
+        fetch('/api/admin/briefings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'list',
+                ...(clientFilter ? { clientId: clientFilter } : {}),
+                ...(statusFilter ? { status: statusFilter } : {}),
+                ...(monthFilter ? { referenceMonth: monthFilter } : {}),
+            }),
+        })
+            .then((r) => r.json())
+            .then((data) => {
+                if (cancelled) return;
+                setCycles(data.data?.cycles || []);
+                setLoading(false);
+            });
+        return () => { cancelled = true; };
+    }, [clientFilter, statusFilter, monthFilter]);
+
+    const isOverdue = (cycle: Cycle) => {
+        if (!cycle.dueDate || cycle.status === 'submitted' || cycle.status === 'archived') return false;
+        return dbDateToIso(new Date(cycle.dueDate)) < new Date().toISOString().slice(0, 10);
+    };
+
+    const lastUpdate = (cycle: Cycle) => {
+        const candidates = [
+            cycle.answers[0]?.updatedAt,
+            cycle.events[0]?.createdAt,
+        ].filter(Boolean) as string[];
+        if (candidates.length === 0) return null;
+        return candidates.sort().reverse()[0];
+    };
+
+    return (
+        <div>
+            <div className="page-header">
+                <div>
+                    <h1>Briefings</h1>
+                    <p>Colete informações dos clientes para o planejamento do mês</p>
+                </div>
+                <button className="btn btn-primary" onClick={() => router.push('/admin/briefings/novo')}>
+                    <Plus size={16} /> Novo briefing
+                </button>
+            </div>
+
+            <div className="page-content">
+                <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-5)', flexWrap: 'wrap' }}>
+                    <select className="form-input" style={{ maxWidth: 220 }} value={clientFilter} onChange={(e) => setClientFilter(e.target.value)}>
+                        <option value="">Todos os clientes</option>
+                        {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                    <select className="form-input" style={{ maxWidth: 180 }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                        <option value="">Todos os status</option>
+                        {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    </select>
+                    <input type="month" className="form-input" style={{ maxWidth: 180 }} value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} />
+                </div>
+
+                {loading ? (
+                    <div className="card animate-pulse" style={{ height: 200 }} />
+                ) : cycles.length === 0 ? (
+                    <div className="card empty-state">
+                        <div className="empty-icon"><ClipboardList size={32} /></div>
+                        <h3>Nenhum briefing ainda</h3>
+                        <p className="text-sm text-muted">
+                            Um briefing é um formulário que o cliente preenche pelo link, sem precisar de login,
+                            para você planejar o conteúdo do mês.
+                        </p>
+                        <button className="btn btn-primary mt-2" onClick={() => router.push('/admin/briefings/novo')}>
+                            <Plus size={16} /> Criar o primeiro
+                        </button>
+                    </div>
+                ) : (
+                    <div className="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Cliente</th>
+                                    <th>Modelo</th>
+                                    <th>Mês</th>
+                                    <th>Status</th>
+                                    <th>Prazo</th>
+                                    <th>Atualizado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {cycles.map((cycle) => {
+                                    const update = lastUpdate(cycle);
+                                    const overdue = isOverdue(cycle);
+                                    return (
+                                        <tr key={cycle.id} style={{ cursor: 'pointer' }} onClick={() => router.push(`/admin/briefings/${cycle.id}`)}>
+                                            <td data-label="Cliente" className="font-semibold">{cycle.client.name}</td>
+                                            <td data-label="Modelo" className="text-secondary">{cycle.template.name}</td>
+                                            <td data-label="Mês">{formatMonthBR(dbDateToIso(new Date(cycle.referenceMonth)))}</td>
+                                            <td data-label="Status">
+                                                <span className={`badge ${STATUS_BADGE[cycle.status] || 'badge-gray'}`}>{STATUS_LABEL[cycle.status] || cycle.status}</span>
+                                            </td>
+                                            <td data-label="Prazo" style={overdue ? { color: 'var(--color-danger)', fontWeight: 600 } : undefined}>
+                                                {cycle.dueDate ? formatDateBR(dbDateToIso(new Date(cycle.dueDate))) : '—'}
+                                            </td>
+                                            <td data-label="Atualizado" className="text-secondary">
+                                                {update ? formatDateBR(dbDateToIso(new Date(update))) : '—'}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
