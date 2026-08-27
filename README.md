@@ -1,5 +1,9 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Migrations
+
+Em 2026-08-27 o histórico de migrations foi rebaseado: `init`, `add_drive_oauth` e `add_briefings_module` (que não batiam mais com o schema real de produção, aplicado em parte via `prisma db push` sem gerar migration) foram substituídas por uma única `20260827120000_baseline`, gerada a partir de um dump verificado de produção. As antigas ficam arquivadas em `prisma/_migrations_archive/` só como registro histórico. Ver `CLAUDE.md` para detalhes.
+
 ## Getting Started
 
 First, run the development server:

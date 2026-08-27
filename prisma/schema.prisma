@@ -686,6 +686,7 @@ model BriefingTemplateSection {
   description      String?
   kind             BriefingTemplateSectionKind
   repeaterItemLabel String?
+  emptyLabel       String?
   minItems         Int?
   maxItems         Int?
   isOptional       Boolean                     @default(false)
@@ -708,12 +709,14 @@ model BriefingTemplateField {
   type        BriefingTemplateFieldType
   options     Json?
   isRequired  Boolean                    @default(false)
+  isActive    Boolean                    @default(true)
   width       BriefingTemplateFieldWidth @default(half)
   sortOrder   Int
 
   section BriefingTemplateSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   answers BriefingAnswer[]
 
+  @@unique([sectionId, key])
   @@index([sectionId])
   @@map("briefing_template_fields")
 }
@@ -785,6 +788,7 @@ model BriefingEvent {
   type      String
   ipHash    String?
   userAgent String?
+  meta      Json?
   createdAt DateTime @default(now())
 
   cycle BriefingCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
