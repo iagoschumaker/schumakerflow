@@ -4,6 +4,15 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 Em 2026-08-27 o histórico de migrations foi rebaseado: `init`, `add_drive_oauth` e `add_briefings_module` (que não batiam mais com o schema real de produção, aplicado em parte via `prisma db push` sem gerar migration) foram substituídas por uma única `20260827120000_baseline`, gerada a partir de um dump verificado de produção. As antigas ficam arquivadas em `prisma/_migrations_archive/` só como registro histórico. Ver `CLAUDE.md` para detalhes.
 
+## Módulo Briefings
+
+Duas variáveis controlam o módulo:
+
+- `NEXT_PUBLIC_BRIEFINGS_ENABLED` — build-time, client. Só mostra/esconde o item de menu. Mudar no `.env` da VPS exige rebuild (`npm run build`), reiniciar o processo não basta.
+- `BRIEFINGS_ENABLED` — runtime, server. É a segurança de verdade: com `false`, `/admin/briefings/*` e `/api/admin/briefings*` retornam 404, e `/b/[token]` retorna 503.
+
+**Mantenha `NEXT_PUBLIC_BRIEFINGS_ENABLED=false` em produção até a Fase 4 estar pronta.** O item de menu aponta para `/admin/briefings`, e a página de listagem (Fase 4) ainda não existe — ligar a flag antes disso faz o menu levar a um 404.
+
 ## Getting Started
 
 First, run the development server:

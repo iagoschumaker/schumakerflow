@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { LayoutDashboard, Users, FolderKanban, FileText, Download, DollarSign, Settings, Shield, Zap, LogOut, Menu, ChevronDown, Receipt, TrendingUp, CreditCard, CalendarDays } from 'lucide-react';
+import { LayoutDashboard, Users, FolderKanban, FileText, Download, DollarSign, Settings, Shield, Zap, LogOut, Menu, ChevronDown, Receipt, TrendingUp, CreditCard, CalendarDays, ClipboardList } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import { ToastProvider } from '@/components/Toast';
 
@@ -24,6 +24,9 @@ interface MenuItem {
 const adminMenu: MenuItem[] = [
     { href: '/admin', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
     { href: '/admin/clients', label: 'Clientes', icon: <Users size={18} /> },
+    ...(process.env.NEXT_PUBLIC_BRIEFINGS_ENABLED === 'true'
+        ? [{ href: '/admin/briefings', label: 'Briefings', icon: <ClipboardList size={18} /> }]
+        : []),
     { href: '/admin/projects', label: 'Projetos', icon: <FolderKanban size={18} /> },
     { href: '/admin/files', label: 'Arquivos', icon: <FileText size={18} /> },
     { href: '/admin/downloads', label: 'Downloads', icon: <Download size={18} /> },

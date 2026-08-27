@@ -18,6 +18,8 @@ const publicPaths = [
     '/no-access',
     '/_next/',
     '/favicon.ico',
+    '/b/',
+    '/api/public/briefings/',
 ];
 
 export async function middleware(request: NextRequest) {
