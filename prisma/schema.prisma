@@ -731,6 +731,7 @@ model BriefingCycle {
   status         BriefingCycleStatus @default(draft)
   dueDate        DateTime?          @db.Date
   submittedAt    DateTime?
+  archivedAt     DateTime?
   createdBy      String
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
@@ -752,7 +753,8 @@ model BriefingCycle {
 model BriefingLink {
   id           String    @id @default(uuid())
   cycleId      String
-  tokenHash    String    @unique
+  tokenEnc     String    // AES-256-GCM: base64(iv || authTag || ciphertext). Recoverable for "Mostrar link".
+  tokenLookup  String    @unique // SHA-256(token) hex — only used for the public route's WHERE lookup.
   tokenPreview String
   expiresAt    DateTime
   revokedAt    DateTime?
@@ -761,7 +763,7 @@ model BriefingLink {
 
   cycle BriefingCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
 
-  @@index([tokenHash])
+  @@index([tokenLookup])
   @@index([cycleId])
   @@map("briefing_links")
 }

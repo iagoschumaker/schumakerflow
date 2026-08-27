@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Copy, Check, RefreshCw, Ban, RotateCcw, Archive, Download, FileJson, AlertTriangle, ArrowLeft, Link2, Eye, Clock } from 'lucide-react';
+import { Copy, Check, RefreshCw, Ban, RotateCcw, Archive, ArchiveRestore, Eye, Download, FileJson, AlertTriangle, ArrowLeft, Link2, Clock } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 import { buildBriefingExport, type ExportSection, type ExportAnswer } from '@/lib/briefings/export';
 import { formatMonthBR, formatDateBR, dbDateToIso } from '@/lib/briefings/dates';
@@ -13,6 +13,7 @@ interface CycleData {
     referenceMonth: string;
     dueDate: string | null;
     submittedAt: string | null;
+    archivedAt: string | null;
     createdAt: string;
     client: { id: string; name: string };
     template: { id: string; name: string; sections: ExportSection[] };
@@ -22,15 +23,15 @@ interface CycleData {
 }
 
 const STATUS_LABEL: Record<string, string> = {
-    draft: 'Rascunho', sent: 'Enviado', in_progress: 'Preenchendo', submitted: 'Recebido', archived: 'Arquivado',
+    draft: 'Rascunho', sent: 'Enviado', in_progress: 'Preenchendo', submitted: 'Recebido',
 };
 const STATUS_BADGE: Record<string, string> = {
-    draft: 'badge-gray', sent: 'badge-info', in_progress: 'badge-warning', submitted: 'badge-success', archived: 'badge-gray',
+    draft: 'badge-gray', sent: 'badge-info', in_progress: 'badge-warning', submitted: 'badge-success',
 };
 const EVENT_LABEL: Record<string, string> = {
-    link_created: 'Link criado', link_opened: 'Link aberto', autosaved: 'Respostas salvas automaticamente',
-    submitted: 'Briefing enviado', reopened: 'Reaberto para edição', link_revoked: 'Link revogado', archived: 'Arquivado',
-    autosave_rejected: 'Tentativa de salvar campo inválido',
+    link_created: 'Link criado', link_opened: 'Link aberto', link_revealed: 'Link revelado', autosaved: 'Respostas salvas automaticamente',
+    submitted: 'Briefing enviado', reopened: 'Reaberto para edição', link_revoked: 'Link revogado',
+    archived: 'Arquivado', unarchived: 'Desarquivado', autosave_rejected: 'Tentativa de salvar campo inválido',
 };
 
 function Panel({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
@@ -62,7 +63,7 @@ export default function BriefingDetailPage() {
     const [cycle, setCycle] = useState<CycleData | null>(null);
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
-    const [newToken, setNewToken] = useState<string | null>(null);
+    const [shownToken, setShownToken] = useState<string | null>(null);
     const [copiedText, setCopiedText] = useState(false);
     const [copiedLink, setCopiedLink] = useState(false);
 
@@ -90,6 +91,12 @@ export default function BriefingDetailPage() {
             answers: cycle.answers,
         });
     }, [cycle]);
+
+    const sectionCounter = useMemo(() => {
+        if (!built) return null;
+        const total = built.sections.length + built.emptySections.length;
+        return { filled: built.sections.length, total };
+    }, [built]);
 
     const activeLink = cycle?.links.find((l) => !l.revokedAt) || cycle?.links[0] || null;
     const linkStatus = activeLink
@@ -120,12 +127,18 @@ export default function BriefingDetailPage() {
         const ok = await showConfirm({ title: 'Gerar novo link', message: 'O link atual será revogado e um novo será criado. Confirma?' });
         if (!ok) return;
         const data = await runAction('regenerateLink');
-        if (data?.token) { setNewToken(data.token); load(); }
+        if (data?.token) { setShownToken(data.token); load(); }
+    };
+
+    const handleReveal = async () => {
+        const data = await runAction('revealLink');
+        if (data?.token) { setShownToken(data.token); load(); }
     };
 
     const handleRevoke = async () => {
         const ok = await showConfirm({ title: 'Revogar link', message: 'O cliente não vai mais conseguir acessar por esse link. Confirma?', variant: 'danger' });
         if (!ok) return;
+        setShownToken(null);
         await runAction('revokeLink');
         load();
     };
@@ -138,9 +151,15 @@ export default function BriefingDetailPage() {
     };
 
     const handleArchive = async () => {
-        const ok = await showConfirm({ title: 'Arquivar briefing', message: 'O link ativo será revogado e o ciclo marcado como encerrado. Confirma?', variant: 'danger' });
+        const ok = await showConfirm({ title: 'Arquivar briefing', message: 'O link ativo será revogado e o ciclo sai da lista ativa. O detalhe continua acessível. Confirma?', variant: 'danger' });
         if (!ok) return;
+        setShownToken(null);
         await runAction('archive');
+        load();
+    };
+
+    const handleUnarchive = async () => {
+        await runAction('unarchive');
         load();
     };
 
@@ -175,7 +194,7 @@ export default function BriefingDetailPage() {
     if (loading) return <div className="page-content"><div className="card animate-pulse" style={{ height: 300 }} /></div>;
     if (!cycle || !built) return <div className="page-content"><div className="card empty-state"><h3>Briefing não encontrado</h3></div></div>;
 
-    const newLink = newToken ? `${window.location.origin}/b/${newToken}` : '';
+    const shownLink = shownToken ? `${window.location.origin}/b/${shownToken}` : '';
 
     return (
         <div>
@@ -188,6 +207,7 @@ export default function BriefingDetailPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4, flexWrap: 'wrap' }}>
                         <p style={{ margin: 0 }}>{cycle.template.name} — {formatMonthBR(dbDateToIso(new Date(cycle.referenceMonth)))}</p>
                         <span className={`badge ${STATUS_BADGE[cycle.status] || 'badge-gray'}`}>{STATUS_LABEL[cycle.status] || cycle.status}</span>
+                        {cycle.archivedAt && <span className="badge badge-gray">Arquivado</span>}
                         {cycle.dueDate && <span className="text-sm text-muted">Prazo: {formatDateBR(dbDateToIso(new Date(cycle.dueDate)))}</span>}
                         {cycle.submittedAt && <span className="text-sm text-muted">Enviado: {formatDateBR(dbDateToIso(new Date(cycle.submittedAt)))}</span>}
                     </div>
@@ -200,7 +220,12 @@ export default function BriefingDetailPage() {
                     title="Link"
                     action={
                         <div style={{ display: 'flex', gap: 8 }}>
-                            <button className="btn btn-secondary btn-sm" onClick={handleRegenerate} disabled={busy || cycle.status === 'archived'}>
+                            {activeLink && !activeLink.revokedAt && !shownToken && (
+                                <button className="btn btn-secondary btn-sm" onClick={handleReveal} disabled={busy}>
+                                    <Eye size={14} /> Mostrar link
+                                </button>
+                            )}
+                            <button className="btn btn-secondary btn-sm" onClick={handleRegenerate} disabled={busy}>
                                 <RefreshCw size={14} /> Gerar novo
                             </button>
                             {activeLink && !activeLink.revokedAt && (
@@ -211,12 +236,12 @@ export default function BriefingDetailPage() {
                         </div>
                     }
                 >
-                    {newToken ? (
+                    {shownToken ? (
                         <div>
-                            <p style={{ fontWeight: 600, color: 'var(--color-warning)', marginBottom: 8, fontSize: '0.85rem' }}>Este link aparece uma única vez. Copie agora.</p>
+                            <p className="text-sm text-muted" style={{ marginBottom: 8 }}>Você pode mostrar este link de novo a qualquer momento em &quot;Mostrar link&quot;.</p>
                             <div style={{ display: 'flex', gap: 8 }}>
-                                <input className="form-input" readOnly value={newLink} onFocus={(e) => e.target.select()} />
-                                <button type="button" className="btn btn-secondary" onClick={() => copy(newLink, 'link')} style={{ flexShrink: 0 }}>
+                                <input className="form-input" readOnly value={shownLink} onFocus={(e) => e.target.select()} />
+                                <button type="button" className="btn btn-secondary" onClick={() => copy(shownLink, 'link')} style={{ flexShrink: 0 }}>
                                     {copiedLink ? <Check size={16} /> : <Copy size={16} />}
                                 </button>
                             </div>
@@ -261,43 +286,56 @@ export default function BriefingDetailPage() {
                         </div>
                     }
                 >
+                    {sectionCounter && (
+                        <p className="text-sm text-muted" style={{ marginBottom: 'var(--space-4)' }}>
+                            {sectionCounter.filled} de {sectionCounter.total} seções preenchidas
+                        </p>
+                    )}
+
+                    {built.sections.length > 0 && (
+                        <div className="grid-2" style={{ marginBottom: built.emptySections.length > 0 ? 'var(--space-4)' : 0 }}>
+                            {built.sections.map((section) => (
+                                <div key={section.title}>
+                                    <h3 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: 10, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{section.title}</h3>
+                                    {section.kind === 'single' ? (
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 'var(--space-3)' }}>
+                                            {section.singleItems.map((item, i) => (
+                                                <InfoItem key={i} label={item.label} value={item.value} />
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                            {section.repeaterGroups.map((group, gi) => (
+                                                <div key={gi} style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 'var(--space-4)', background: 'var(--color-bg)' }}>
+                                                    <div className="badge badge-gray" style={{ marginBottom: 10 }}>{group.itemLabel} {gi + 1}</div>
+                                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-3)' }}>
+                                                        {group.items.map((item, i) => (
+                                                            <InfoItem key={i} label={item.label} value={item.value} />
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {built.emptySections.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {built.emptySections.map((es, i) => (
+                                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'var(--color-bg)' }}>
+                                    <span className="text-sm text-muted">{es.emptyLabel}</span>
+                                    <span className="badge badge-gray">vazio</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
                     {built.sections.length === 0 && built.emptySections.length === 0 && (
                         <p className="text-sm text-muted">Nenhuma resposta ainda.</p>
                     )}
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-                        {built.sections.map((section) => (
-                            <div key={section.title}>
-                                <h3 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: 10, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{section.title}</h3>
-                                {section.kind === 'single' ? (
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--space-3)' }}>
-                                        {section.singleItems.map((item, i) => (
-                                            <InfoItem key={i} label={item.label} value={item.value} />
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                        {section.repeaterGroups.map((group, gi) => (
-                                            <div key={gi} style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 'var(--space-4)', background: 'var(--color-bg)' }}>
-                                                <div className="badge badge-gray" style={{ marginBottom: 10 }}>{group.itemLabel} {gi + 1}</div>
-                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 'var(--space-3)' }}>
-                                                    {group.items.map((item, i) => (
-                                                        <InfoItem key={i} label={item.label} value={item.value} />
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-
-                        {built.emptySections.map((es, i) => (
-                            <div key={i} style={{ border: '1px dashed var(--color-border)', borderRadius: 'var(--radius-md)', padding: 'var(--space-4)', textAlign: 'center' }}>
-                                <span className="text-sm text-muted">{es.emptyLabel}</span>
-                            </div>
-                        ))}
-                    </div>
                 </Panel>
 
                 {/* Actions */}
@@ -305,7 +343,9 @@ export default function BriefingDetailPage() {
                     {cycle.status === 'submitted' && (
                         <button className="btn btn-secondary" onClick={handleReopen} disabled={busy}><RotateCcw size={16} /> Reabrir para edição</button>
                     )}
-                    {cycle.status !== 'archived' && (
+                    {cycle.archivedAt ? (
+                        <button className="btn btn-secondary" onClick={handleUnarchive} disabled={busy}><ArchiveRestore size={16} /> Desarquivar</button>
+                    ) : (
                         <button className="btn btn-secondary" onClick={handleArchive} disabled={busy}><Archive size={16} /> Arquivar</button>
                     )}
                 </div>

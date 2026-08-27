@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, apiSuccess, apiError, ApiContext } from '@/lib/api/helpers';
 import { isBriefingsEnabled } from '@/lib/briefings/flag';
-import { generateToken } from '@/lib/briefings/token';
+import { generateToken, decryptToken } from '@/lib/briefings/token';
 import { buildBriefingExport } from '@/lib/briefings/export';
 import prisma from '@/lib/db';
 import { z } from 'zod';
@@ -10,8 +10,9 @@ import { Prisma } from '@prisma/client';
 const listSchema = z.object({
     action: z.literal('list'),
     clientId: z.string().uuid().optional(),
-    status: z.enum(['draft', 'sent', 'in_progress', 'submitted', 'archived']).optional(),
+    status: z.enum(['draft', 'sent', 'in_progress', 'submitted']).optional(),
     referenceMonth: z.string().optional(),
+    showArchived: z.boolean().optional(),
     page: z.number().int().positive().optional(),
 });
 
@@ -58,6 +59,7 @@ export const POST = withAuth(
             if (parsed.data.clientId) where.clientId = parsed.data.clientId;
             if (parsed.data.status) where.status = parsed.data.status;
             if (parsed.data.referenceMonth) where.referenceMonth = monthStartUtc(parsed.data.referenceMonth);
+            if (!parsed.data.showArchived) where.archivedAt = null;
 
             const [cycles, total] = await Promise.all([
                 prisma.briefingCycle.findMany({
@@ -118,7 +120,7 @@ export const POST = withAuth(
             const referenceMonth = monthStartUtc(parsed.data.referenceMonth);
             const dueDate = parsed.data.dueDate ? new Date(`${parsed.data.dueDate}T00:00:00.000Z`) : null;
 
-            const { token, hash, preview } = generateToken();
+            const { token, tokenEnc, tokenLookup, preview } = generateToken();
             const expiresAt = dueDate
                 ? new Date(dueDate.getTime() + 15 * 24 * 60 * 60 * 1000)
                 : new Date(Date.now() + 45 * 24 * 60 * 60 * 1000);
@@ -133,7 +135,7 @@ export const POST = withAuth(
                         dueDate,
                         status: 'sent',
                         createdBy: ctx.session.userId,
-                        links: { create: { tokenHash: hash, tokenPreview: preview, expiresAt } },
+                        links: { create: { tokenEnc, tokenLookup, tokenPreview: preview, expiresAt } },
                         events: { create: { type: 'link_created' } },
                     },
                     include: { client: { select: { name: true } }, template: { select: { name: true } } },
@@ -155,7 +157,7 @@ export const POST = withAuth(
             const cycle = await prisma.briefingCycle.findFirst({ where: { id: parsed.data.id, tenantId: ctx.tenantId } });
             if (!cycle) return apiError('Cycle not found', 404);
 
-            const { token, hash, preview } = generateToken();
+            const { token, tokenEnc, tokenLookup, preview } = generateToken();
             const expiresAt = cycle.dueDate
                 ? new Date(cycle.dueDate.getTime() + 15 * 24 * 60 * 60 * 1000)
                 : new Date(Date.now() + 45 * 24 * 60 * 60 * 1000);
@@ -166,10 +168,29 @@ export const POST = withAuth(
                     data: { revokedAt: new Date() },
                 }),
                 prisma.briefingLink.create({
-                    data: { cycleId: cycle.id, tokenHash: hash, tokenPreview: preview, expiresAt },
+                    data: { cycleId: cycle.id, tokenEnc, tokenLookup, tokenPreview: preview, expiresAt },
                 }),
                 prisma.briefingEvent.create({ data: { cycleId: cycle.id, type: 'link_created' } }),
             ]);
+
+            return apiSuccess({ token });
+        }
+
+        if (body.action === 'revealLink') {
+            const parsed = idSchema.safeParse(body);
+            if (!parsed.success) return apiError('Invalid input', 400);
+
+            const cycle = await prisma.briefingCycle.findFirst({ where: { id: parsed.data.id, tenantId: ctx.tenantId } });
+            if (!cycle) return apiError('Cycle not found', 404);
+
+            const link = await prisma.briefingLink.findFirst({
+                where: { cycleId: cycle.id, revokedAt: null },
+                orderBy: { expiresAt: 'desc' },
+            });
+            if (!link) return apiError('No active link', 404);
+
+            const token = decryptToken(link.tokenEnc);
+            await prisma.briefingEvent.create({ data: { cycleId: cycle.id, type: 'link_revealed' } });
 
             return apiSuccess({ token });
         }
@@ -201,7 +222,7 @@ export const POST = withAuth(
             if (cycle.status !== 'submitted') return apiError('Only submitted cycles can be reopened', 409);
 
             await prisma.$transaction([
-                prisma.briefingCycle.update({ where: { id: cycle.id }, data: { status: 'in_progress' } }),
+                prisma.briefingCycle.update({ where: { id: cycle.id }, data: { status: 'in_progress', archivedAt: null } }),
                 prisma.briefingEvent.create({ data: { cycleId: cycle.id, type: 'reopened' } }),
             ]);
 
@@ -216,12 +237,27 @@ export const POST = withAuth(
             if (!cycle) return apiError('Cycle not found', 404);
 
             await prisma.$transaction([
-                prisma.briefingCycle.update({ where: { id: cycle.id }, data: { status: 'archived' } }),
+                prisma.briefingCycle.update({ where: { id: cycle.id }, data: { archivedAt: new Date() } }),
                 prisma.briefingLink.updateMany({
                     where: { cycleId: cycle.id, revokedAt: null },
                     data: { revokedAt: new Date() },
                 }),
                 prisma.briefingEvent.create({ data: { cycleId: cycle.id, type: 'archived' } }),
+            ]);
+
+            return apiSuccess({ ok: true });
+        }
+
+        if (body.action === 'unarchive') {
+            const parsed = idSchema.safeParse(body);
+            if (!parsed.success) return apiError('Invalid input', 400);
+
+            const cycle = await prisma.briefingCycle.findFirst({ where: { id: parsed.data.id, tenantId: ctx.tenantId } });
+            if (!cycle) return apiError('Cycle not found', 404);
+
+            await prisma.$transaction([
+                prisma.briefingCycle.update({ where: { id: cycle.id }, data: { archivedAt: null } }),
+                prisma.briefingEvent.create({ data: { cycleId: cycle.id, type: 'unarchived' } }),
             ]);
 
             return apiSuccess({ ok: true });

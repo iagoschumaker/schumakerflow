@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/db';
 import { isBriefingsEnabled } from '@/lib/briefings/flag';
-import { hashToken, hashIp } from '@/lib/briefings/token';
+import { hashToken as computeTokenLookup, hashIp } from '@/lib/briefings/token';
 import { checkAutosaveRateLimit, checkIpRateLimit } from '@/lib/briefings/rate-limit';
 import { isValidFieldValue } from '@/lib/briefings/validate';
 
@@ -26,14 +26,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     if (!isBriefingsEnabled()) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
     const { token } = await params;
-    const tokenHash = hashToken(token);
+    const tokenLookup = computeTokenLookup(token);
     const ipHash = hashIp(getClientIp(req));
 
     if (!checkIpRateLimit(ipHash)) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
-    if (!checkAutosaveRateLimit(tokenHash)) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    if (!checkAutosaveRateLimit(tokenLookup)) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
 
     const link = await prisma.briefingLink.findUnique({
-        where: { tokenHash },
+        where: { tokenLookup },
         include: {
             cycle: {
                 include: {
@@ -45,11 +45,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
         },
     });
 
-    if (!link || link.revokedAt || link.expiresAt < new Date()) {
+    if (!link) {
         return NextResponse.json({ error: 'Invalid link' }, { status: 404 });
     }
     if (link.cycle.status === 'submitted' || link.cycle.status === 'archived') {
         return NextResponse.json({ error: 'Cycle is closed' }, { status: 409 });
+    }
+    if (link.revokedAt || link.expiresAt < new Date()) {
+        return NextResponse.json({ error: 'Invalid link' }, { status: 404 });
     }
 
     let body: unknown;

@@ -54,6 +54,12 @@
     margin: 2px 0 0;
 }
 
+.briefingDue {
+    font-size: 0.78rem;
+    color: var(--pub-text-muted);
+    margin: 4px 0 0;
+}
+
 .saveIndicator {
     font-size: 0.72rem;
     white-space: nowrap;

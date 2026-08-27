@@ -10,6 +10,7 @@ interface Cycle {
     status: string;
     referenceMonth: string;
     dueDate: string | null;
+    archivedAt: string | null;
     client: { id: string; name: string };
     template: { id: string; name: string };
     links: { id: string }[];
@@ -24,7 +25,6 @@ const STATUS_LABEL: Record<string, string> = {
     sent: 'Enviado',
     in_progress: 'Preenchendo',
     submitted: 'Recebido',
-    archived: 'Arquivado',
 };
 
 const STATUS_BADGE: Record<string, string> = {
@@ -32,7 +32,6 @@ const STATUS_BADGE: Record<string, string> = {
     sent: 'badge-info',
     in_progress: 'badge-warning',
     submitted: 'badge-success',
-    archived: 'badge-gray',
 };
 
 export default function BriefingsListPage() {
@@ -43,6 +42,7 @@ export default function BriefingsListPage() {
     const [clientFilter, setClientFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
     const [monthFilter, setMonthFilter] = useState('');
+    const [showArchived, setShowArchived] = useState(false);
 
     useEffect(() => {
         fetch('/api/admin/clients')
@@ -62,6 +62,7 @@ export default function BriefingsListPage() {
                 ...(clientFilter ? { clientId: clientFilter } : {}),
                 ...(statusFilter ? { status: statusFilter } : {}),
                 ...(monthFilter ? { referenceMonth: monthFilter } : {}),
+                ...(showArchived ? { showArchived: true } : {}),
             }),
         })
             .then((r) => r.json())
@@ -71,10 +72,10 @@ export default function BriefingsListPage() {
                 setLoading(false);
             });
         return () => { cancelled = true; };
-    }, [clientFilter, statusFilter, monthFilter]);
+    }, [clientFilter, statusFilter, monthFilter, showArchived]);
 
     const isOverdue = (cycle: Cycle) => {
-        if (!cycle.dueDate || cycle.status === 'submitted' || cycle.status === 'archived') return false;
+        if (!cycle.dueDate || cycle.status === 'submitted' || cycle.archivedAt) return false;
         return dbDateToIso(new Date(cycle.dueDate)) < new Date().toISOString().slice(0, 10);
     };
 
@@ -132,6 +133,10 @@ export default function BriefingsListPage() {
                         {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                     </select>
                     <input type="month" className="form-input" style={{ maxWidth: 180 }} value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} />
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', color: 'var(--color-text-secondary)', cursor: 'pointer', paddingInline: 4 }}>
+                        <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
+                        Mostrar arquivados
+                    </label>
                 </div>
 
                 <div className="card" style={{ padding: 0 }}>
@@ -177,6 +182,7 @@ export default function BriefingsListPage() {
                                                 <td data-label="Mês">{formatMonthBR(dbDateToIso(new Date(cycle.referenceMonth)))}</td>
                                                 <td data-label="Status">
                                                     <span className={`badge ${STATUS_BADGE[cycle.status] || 'badge-gray'}`}>{STATUS_LABEL[cycle.status] || cycle.status}</span>
+                                                    {cycle.archivedAt && <span className="badge badge-gray" style={{ marginLeft: 6 }}>Arquivado</span>}
                                                 </td>
                                                 <td data-label="Prazo" style={overdue ? { color: 'var(--color-danger)', fontWeight: 600 } : undefined}>
                                                     {cycle.dueDate ? formatDateBR(dbDateToIso(new Date(cycle.dueDate))) : '—'}

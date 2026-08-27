@@ -39,6 +39,7 @@ interface Props {
     token: string;
     clientName: string;
     referenceMonthLabel: string;
+    dueDateLabel: string | null;
     sections: Section[];
     initialAnswers: AnswerIn[];
 }
@@ -49,7 +50,7 @@ function answerKey(fieldId: string, groupIndex: number) {
     return `${fieldId}:${groupIndex}`;
 }
 
-export default function BriefingForm({ token, clientName, referenceMonthLabel, sections, initialAnswers }: Props) {
+export default function BriefingForm({ token, clientName, referenceMonthLabel, dueDateLabel, sections, initialAnswers }: Props) {
     const [values, setValues] = useState<Map<string, unknown>>(() => {
         const m = new Map<string, unknown>();
         for (const a of initialAnswers) m.set(answerKey(a.fieldId, a.groupIndex), a.value?.raw ?? '');
@@ -204,6 +205,7 @@ export default function BriefingForm({ token, clientName, referenceMonthLabel, s
                     <div>
                         <p className={styles.clientName}>{clientName}</p>
                         <p className={styles.briefingTitle}>Briefing de {referenceMonthLabel}</p>
+                        {dueDateLabel && <p className={styles.briefingDue}>Prazo: {dueDateLabel}</p>}
                     </div>
                     <SaveIndicator status={status} savedAt={savedAt} />
                 </div>

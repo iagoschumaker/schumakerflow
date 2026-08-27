@@ -44,7 +44,6 @@ const sections: SectionDef[] = [
     title: 'Identificação',
     kind: 'single',
     fields: [
-      { key: 'mes_referencia', label: 'Mês de referência', type: 'month', width: 'half', isRequired: true },
       { key: 'preenchido_por', label: 'Preenchido por', type: 'text', width: 'half' },
     ],
   },

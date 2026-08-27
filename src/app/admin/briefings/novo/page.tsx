@@ -113,10 +113,7 @@ export default function NewBriefingPage() {
                 <div className="page-header"><div><h1>Briefing criado</h1><p>{result.clientName} — {mesLabel}</p></div></div>
                 <div className="page-content" style={pageWrapperStyle}>
                     <div className="card">
-                        <div className="card" style={{ padding: 'var(--space-4)', marginBottom: 'var(--space-5)', borderColor: 'var(--color-warning)', boxShadow: 'none' }}>
-                            <p style={{ fontWeight: 600, color: 'var(--color-warning)', marginBottom: 4 }}>Este link aparece uma única vez. Copie agora.</p>
-                            <p className="text-sm text-muted">Se perder, use &quot;Gerar novo link&quot; no detalhe do ciclo — mas o link antigo é revogado.</p>
-                        </div>
+                        <p className="text-sm text-muted" style={{ marginBottom: 'var(--space-5)' }}>Você pode ver este link de novo a qualquer momento no detalhe do ciclo, em &quot;Mostrar link&quot;.</p>
 
                         <div className="form-group">
                             <label className="form-label">Link do briefing</label>

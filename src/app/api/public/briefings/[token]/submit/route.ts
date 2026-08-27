@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { isBriefingsEnabled } from '@/lib/briefings/flag';
-import { hashToken, hashIp } from '@/lib/briefings/token';
+import { hashToken as computeTokenLookup, hashIp } from '@/lib/briefings/token';
 import { checkSubmitRateLimit, checkIpRateLimit } from '@/lib/briefings/rate-limit';
 import { hasValue } from '@/lib/briefings/validate';
 import { notifyBriefingSubmitted } from '@/lib/briefings/notify';
@@ -16,14 +16,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     if (!isBriefingsEnabled()) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
     const { token } = await params;
-    const tokenHash = hashToken(token);
+    const tokenLookup = computeTokenLookup(token);
     const ipHash = hashIp(getClientIp(req));
 
     if (!checkIpRateLimit(ipHash)) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
-    if (!checkSubmitRateLimit(tokenHash)) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    if (!checkSubmitRateLimit(tokenLookup)) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
 
     const link = await prisma.briefingLink.findUnique({
-        where: { tokenHash },
+        where: { tokenLookup },
         include: {
             cycle: {
                 include: {
@@ -36,11 +36,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
         },
     });
 
-    if (!link || link.revokedAt || link.expiresAt < new Date()) {
+    if (!link) {
         return NextResponse.json({ error: 'Invalid link' }, { status: 404 });
     }
     if (link.cycle.status === 'submitted') {
         return NextResponse.json({ error: 'Already submitted' }, { status: 409 });
+    }
+    if (link.revokedAt || link.expiresAt < new Date()) {
+        return NextResponse.json({ error: 'Invalid link' }, { status: 404 });
     }
     if (link.cycle.status === 'archived') {
         return NextResponse.json({ error: 'Cycle is closed' }, { status: 409 });
@@ -87,10 +90,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
         return NextResponse.json({ missing }, { status: 422 });
     }
 
-    await prisma.briefingCycle.update({
-        where: { id: link.cycleId },
-        data: { status: 'submitted', submittedAt: new Date() },
-    });
+    await prisma.$transaction([
+        prisma.briefingCycle.update({
+            where: { id: link.cycleId },
+            data: { status: 'submitted', submittedAt: new Date(), archivedAt: new Date() },
+        }),
+        prisma.briefingLink.updateMany({
+            where: { cycleId: link.cycleId, revokedAt: null },
+            data: { revokedAt: new Date() },
+        }),
+        prisma.briefingEvent.create({ data: { cycleId: link.cycleId, type: 'archived', meta: { reason: 'auto_on_submit' } } }),
+    ]);
     await notifyBriefingSubmitted(link.cycleId);
 
     return NextResponse.json({ ok: true });
