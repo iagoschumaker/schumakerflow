@@ -25,6 +25,22 @@ const publicPaths = [
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
+    // Briefings public form: flag off means "temporarily unavailable", never a 404 --
+    // a 404 would make the client think the link itself is wrong and call.
+    if (pathname.startsWith('/b/') && process.env.BRIEFINGS_ENABLED !== 'true') {
+        return new NextResponse(
+            `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>Indisponível</title></head><body style="font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 24px; background: #F2F2F7; text-align: center;"><div style="max-width: 420px;"><h1 style="font-size: 1.1rem;">Formulário indisponível</h1><p style="color: #3A3A3C;">Este formulário está temporariamente indisponível. Tente novamente mais tarde ou fale com seu contato.</p></div></body></html>`,
+            {
+                status: 503,
+                headers: {
+                    'Content-Type': 'text/html; charset=utf-8',
+                    'Retry-After': '3600',
+                    'X-Robots-Tag': 'noindex, nofollow',
+                },
+            }
+        );
+    }
+
     // Allow public paths
     if (publicPaths.some((p) => pathname.startsWith(p))) {
         return NextResponse.next();
