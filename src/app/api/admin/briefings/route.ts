@@ -31,6 +31,13 @@ const createSchema = z.object({
 
 const idSchema = z.object({ id: z.string().uuid() });
 
+const updateSchema = z.object({
+    action: z.literal('update'),
+    id: z.string().uuid(),
+    referenceMonth: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+    dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+});
+
 const exportSchema = z.object({
     action: z.literal('export'),
     id: z.string().uuid(),
@@ -148,6 +155,64 @@ export const POST = withAuth(
                 }
                 throw e;
             }
+        }
+
+        if (body.action === 'update') {
+            const parsed = updateSchema.safeParse(body);
+            if (!parsed.success) return apiError('Invalid input', 400);
+            if (parsed.data.referenceMonth === undefined && parsed.data.dueDate === undefined) {
+                return apiError('Nothing to update', 400);
+            }
+
+            const cycle = await prisma.briefingCycle.findFirst({ where: { id: parsed.data.id, tenantId: ctx.tenantId } });
+            if (!cycle) return apiError('Cycle not found', 404);
+
+            const data: Prisma.BriefingCycleUpdateInput = {};
+            if (parsed.data.referenceMonth) data.referenceMonth = monthStartUtc(parsed.data.referenceMonth);
+            if (parsed.data.dueDate !== undefined) {
+                data.dueDate = parsed.data.dueDate ? new Date(`${parsed.data.dueDate}T00:00:00.000Z`) : null;
+            }
+
+            try {
+                await prisma.$transaction([
+                    prisma.briefingCycle.update({ where: { id: cycle.id }, data }),
+                    prisma.briefingEvent.create({
+                        data: { cycleId: cycle.id, type: 'edited', meta: { referenceMonth: parsed.data.referenceMonth, dueDate: parsed.data.dueDate } },
+                    }),
+                ]);
+            } catch (e) {
+                if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+                    return apiError('Já existe um briefing deste modelo para este cliente neste mês.', 409);
+                }
+                throw e;
+            }
+
+            return apiSuccess({ ok: true });
+        }
+
+        if (body.action === 'delete') {
+            const parsed = idSchema.safeParse(body);
+            if (!parsed.success) return apiError('Invalid input', 400);
+
+            const cycle = await prisma.briefingCycle.findFirst({ where: { id: parsed.data.id, tenantId: ctx.tenantId } });
+            if (!cycle) return apiError('Cycle not found', 404);
+
+            // The cycle's own event log (briefing_events) dies with it, so the
+            // deletion itself is recorded in the tenant-wide audit log instead --
+            // same convention as Client/Project hard-delete.
+            await prisma.auditLog.create({
+                data: {
+                    tenantId: ctx.tenantId,
+                    userId: ctx.session.userId,
+                    action: 'briefingCycle.delete',
+                    entityType: 'BriefingCycle',
+                    entityId: cycle.id,
+                    details: JSON.stringify({ clientId: cycle.clientId, templateId: cycle.templateId, referenceMonth: cycle.referenceMonth, status: cycle.status }),
+                },
+            });
+            await prisma.briefingCycle.delete({ where: { id: cycle.id } });
+
+            return apiSuccess({ ok: true });
         }
 
         if (body.action === 'regenerateLink') {

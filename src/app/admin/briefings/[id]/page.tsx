@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Copy, Check, RefreshCw, Ban, RotateCcw, Archive, ArchiveRestore, Eye, Download, FileJson, AlertTriangle, ArrowLeft, Link2, Clock } from 'lucide-react';
+import { Copy, Check, RefreshCw, Ban, RotateCcw, Archive, ArchiveRestore, Eye, Download, FileJson, AlertTriangle, ArrowLeft, Link2, Clock, Pencil, Save, Trash2, X } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 import { buildBriefingExport, type ExportSection, type ExportAnswer } from '@/lib/briefings/export';
 import { formatMonthBR, formatDateBR, dbDateToIso } from '@/lib/briefings/dates';
@@ -30,7 +30,7 @@ const STATUS_BADGE: Record<string, string> = {
 };
 const EVENT_LABEL: Record<string, string> = {
     link_created: 'Link criado', link_opened: 'Link aberto', link_revealed: 'Link revelado', autosaved: 'Respostas salvas automaticamente',
-    submitted: 'Briefing enviado', reopened: 'Reaberto para edição', link_revoked: 'Link revogado',
+    submitted: 'Briefing enviado', reopened: 'Reaberto para edição', link_revoked: 'Link revogado', edited: 'Ciclo editado',
     archived: 'Arquivado', unarchived: 'Desarquivado', autosave_rejected: 'Tentativa de salvar campo inválido',
 };
 
@@ -66,6 +66,9 @@ export default function BriefingDetailPage() {
     const [shownToken, setShownToken] = useState<string | null>(null);
     const [copiedText, setCopiedText] = useState(false);
     const [copiedLink, setCopiedLink] = useState(false);
+    const [editing, setEditing] = useState(false);
+    const [editForm, setEditForm] = useState({ referenceMonth: '', dueDate: '' });
+    const [saving, setSaving] = useState(false);
 
     const load = useCallback(async () => {
         const res = await fetch('/api/admin/briefings', {
@@ -163,6 +166,71 @@ export default function BriefingDetailPage() {
         load();
     };
 
+    const startEdit = () => {
+        if (!cycle) return;
+        setEditForm({
+            referenceMonth: dbDateToIso(new Date(cycle.referenceMonth)).slice(0, 7),
+            dueDate: cycle.dueDate ? dbDateToIso(new Date(cycle.dueDate)) : '',
+        });
+        setEditing(true);
+    };
+
+    const handleSaveEdit = async () => {
+        setSaving(true);
+        try {
+            const res = await fetch('/api/admin/briefings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'update',
+                    id: params.id,
+                    referenceMonth: editForm.referenceMonth,
+                    dueDate: editForm.dueDate || null,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                showToast(data.error || 'Erro ao salvar', 'error');
+                return;
+            }
+            showToast('Briefing atualizado!', 'success');
+            setEditing(false);
+            load();
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        const hasAnswers = cycle ? cycle.answers.length > 0 : false;
+        const ok = await showConfirm({
+            title: 'Excluir briefing',
+            message: hasAnswers
+                ? 'Isso apaga permanentemente o ciclo e as respostas do cliente. Não pode ser desfeito.'
+                : 'O ciclo e seu link serão apagados permanentemente. Não pode ser desfeito.',
+            confirmText: 'Excluir',
+            variant: 'danger',
+        });
+        if (!ok) return;
+        setBusy(true);
+        try {
+            const res = await fetch('/api/admin/briefings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'delete', id: params.id }),
+            });
+            if (!res.ok) {
+                const data = await res.json();
+                showToast(data.error || 'Erro ao excluir', 'error');
+                return;
+            }
+            showToast('Briefing excluído!', 'success');
+            router.push('/admin/briefings');
+        } finally {
+            setBusy(false);
+        }
+    };
+
     const copy = async (text: string, which: 'text' | 'link') => {
         await navigator.clipboard.writeText(text);
         if (which === 'text') { setCopiedText(true); setTimeout(() => setCopiedText(false), 2000); }
@@ -204,13 +272,39 @@ export default function BriefingDetailPage() {
                         <ArrowLeft size={14} /> Voltar
                     </button>
                     <h1>{cycle.client.name}</h1>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4, flexWrap: 'wrap' }}>
-                        <p style={{ margin: 0 }}>{cycle.template.name} — {formatMonthBR(dbDateToIso(new Date(cycle.referenceMonth)))}</p>
-                        <span className={`badge ${STATUS_BADGE[cycle.status] || 'badge-gray'}`}>{STATUS_LABEL[cycle.status] || cycle.status}</span>
-                        {cycle.archivedAt && <span className="badge badge-gray">Arquivado</span>}
-                        {cycle.dueDate && <span className="text-sm text-muted">Prazo: {formatDateBR(dbDateToIso(new Date(cycle.dueDate)))}</span>}
-                        {cycle.submittedAt && <span className="text-sm text-muted">Enviado: {formatDateBR(dbDateToIso(new Date(cycle.submittedAt)))}</span>}
-                    </div>
+                    {editing ? (
+                        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-4)', marginTop: 10, flexWrap: 'wrap' }}>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label">Mês de referência</label>
+                                <input type="month" className="form-input" value={editForm.referenceMonth} onChange={(e) => setEditForm({ ...editForm, referenceMonth: e.target.value })} />
+                            </div>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label">Prazo</label>
+                                <input type="date" className="form-input" value={editForm.dueDate} onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })} />
+                            </div>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4, flexWrap: 'wrap' }}>
+                            <p style={{ margin: 0 }}>{cycle.template.name} — {formatMonthBR(dbDateToIso(new Date(cycle.referenceMonth)))}</p>
+                            <span className={`badge ${STATUS_BADGE[cycle.status] || 'badge-gray'}`}>{STATUS_LABEL[cycle.status] || cycle.status}</span>
+                            {cycle.archivedAt && <span className="badge badge-gray">Arquivado</span>}
+                            {cycle.dueDate && <span className="text-sm text-muted">Prazo: {formatDateBR(dbDateToIso(new Date(cycle.dueDate)))}</span>}
+                            {cycle.submittedAt && <span className="text-sm text-muted">Enviado: {formatDateBR(dbDateToIso(new Date(cycle.submittedAt)))}</span>}
+                        </div>
+                    )}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                    {editing ? (
+                        <>
+                            <button className="btn btn-secondary" onClick={() => setEditing(false)} disabled={saving}><X size={16} /> Cancelar</button>
+                            <button className="btn btn-primary" onClick={handleSaveEdit} disabled={saving}><Save size={16} /> {saving ? 'Salvando...' : 'Salvar'}</button>
+                        </>
+                    ) : (
+                        <>
+                            <button className="btn btn-secondary" onClick={startEdit} disabled={busy}><Pencil size={16} /> Editar</button>
+                            <button className="btn btn-danger" onClick={handleDelete} disabled={busy}><Trash2 size={16} /> Excluir</button>
+                        </>
+                    )}
                 </div>
             </div>
 
