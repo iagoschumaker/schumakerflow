@@ -68,8 +68,7 @@ export default function NewBriefingPage() {
 
     const whatsappText = useMemo(() => {
         if (!result) return '';
-        const [y, m] = referenceMonth.split('-').map(Number);
-        const mesLabel = formatMonthBR(`${y}-${String(m).padStart(2, '0')}-01`.slice(0, 7) + '-01');
+        const mesLabel = formatMonthBR(`${referenceMonth}-01`);
         return `Oi! Segue o link do briefing de ${mesLabel} para eu montar o planejamento:\n\n${link}\n\nSão poucos campos, leva uns 5 minutos. O formulário salva sozinho, dá pra fechar e voltar depois pelo mesmo link.\n\nPrazo: ${dueDate ? formatDateBR(dueDate) : 'a combinar'}`;
     }, [result, link, referenceMonth, dueDate]);
 
@@ -104,32 +103,38 @@ export default function NewBriefingPage() {
         else { setCopiedText(true); setTimeout(() => setCopiedText(false), 2000); }
     };
 
+    const pageWrapperStyle: React.CSSProperties = { maxWidth: 560, margin: '0 auto' };
+
     if (result) {
+        const [y, m] = referenceMonth.split('-').map(Number);
+        const mesLabel = formatMonthBR(`${y}-${String(m).padStart(2, '0')}-01`);
         return (
             <div>
-                <div className="page-header"><div><h1>Briefing criado</h1><p>{result.clientName}</p></div></div>
-                <div className="page-content" style={{ maxWidth: 560 }}>
-                    <div className="card" style={{ padding: 'var(--space-5)', marginBottom: 'var(--space-4)', borderColor: 'var(--color-warning)' }}>
-                        <p style={{ fontWeight: 600, color: 'var(--color-warning)', marginBottom: 4 }}>Este link aparece uma única vez. Copie agora.</p>
-                        <p className="text-sm text-muted">Se perder, use &quot;Gerar novo link&quot; no detalhe do ciclo — mas o link antigo é revogado.</p>
-                    </div>
+                <div className="page-header"><div><h1>Briefing criado</h1><p>{result.clientName} — {mesLabel}</p></div></div>
+                <div className="page-content" style={pageWrapperStyle}>
+                    <div className="card">
+                        <div className="card" style={{ padding: 'var(--space-4)', marginBottom: 'var(--space-5)', borderColor: 'var(--color-warning)', boxShadow: 'none' }}>
+                            <p style={{ fontWeight: 600, color: 'var(--color-warning)', marginBottom: 4 }}>Este link aparece uma única vez. Copie agora.</p>
+                            <p className="text-sm text-muted">Se perder, use &quot;Gerar novo link&quot; no detalhe do ciclo — mas o link antigo é revogado.</p>
+                        </div>
 
-                    <div className="form-group">
-                        <label className="form-label">Link do briefing</label>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                            <input className="form-input" readOnly value={link} onFocus={(e) => e.target.select()} />
-                            <button type="button" className="btn btn-secondary" onClick={() => copy(link, 'link')}>
-                                {copiedLink ? <Check size={16} /> : <Copy size={16} />}
+                        <div className="form-group">
+                            <label className="form-label">Link do briefing</label>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <input className="form-input" readOnly value={link} onFocus={(e) => e.target.select()} />
+                                <button type="button" className="btn btn-secondary" onClick={() => copy(link, 'link')} style={{ flexShrink: 0 }}>
+                                    {copiedLink ? <Check size={16} /> : <Copy size={16} />}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label">Texto pronto para WhatsApp</label>
+                            <textarea className="form-textarea" readOnly value={whatsappText} rows={9} style={{ minHeight: 190, resize: 'vertical' }} />
+                            <button type="button" className="btn btn-secondary mt-2" onClick={() => copy(whatsappText, 'text')}>
+                                {copiedText ? <Check size={16} /> : <Copy size={16} />} Copiar texto
                             </button>
                         </div>
-                    </div>
-
-                    <div className="form-group">
-                        <label className="form-label">Texto pronto para WhatsApp</label>
-                        <textarea className="form-textarea" readOnly value={whatsappText} rows={7} />
-                        <button type="button" className="btn btn-secondary mt-2" onClick={() => copy(whatsappText, 'text')}>
-                            {copiedText ? <Check size={16} /> : <Copy size={16} />} Copiar texto
-                        </button>
                     </div>
 
                     <button className="btn btn-primary" style={{ width: '100%', marginTop: 'var(--space-4)' }} onClick={() => router.push(`/admin/briefings/${result.cycleId}`)}>
@@ -143,28 +148,30 @@ export default function NewBriefingPage() {
     return (
         <div>
             <div className="page-header"><div><h1>Novo briefing</h1><p>Escolha o cliente, o modelo e o mês</p></div></div>
-            <div className="page-content" style={{ maxWidth: 480 }}>
+            <div className="page-content" style={pageWrapperStyle}>
                 <form onSubmit={handleSubmit}>
-                    <div className="form-group">
-                        <label className="form-label">Cliente *</label>
-                        <SearchableSelect options={clientOptions} value={clientId} onChange={setClientId} placeholder="Buscar cliente..." />
+                    <div className="card">
+                        <div className="form-group">
+                            <label className="form-label">Cliente *</label>
+                            <SearchableSelect options={clientOptions} value={clientId} onChange={setClientId} placeholder="Buscar cliente..." />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Modelo *</label>
+                            <select className="form-input" value={templateId} onChange={(e) => setTemplateId(e.target.value)} required>
+                                <option value="">Selecione</option>
+                                {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Mês de referência *</label>
+                            <input type="month" className="form-input" value={referenceMonth} onChange={(e) => setReferenceMonth(e.target.value)} required />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label">Prazo</label>
+                            <input type="date" className="form-input" value={dueDate} onChange={(e) => { setDueDate(e.target.value); setDueDateTouched(true); }} />
+                        </div>
                     </div>
-                    <div className="form-group">
-                        <label className="form-label">Modelo *</label>
-                        <select className="form-input" value={templateId} onChange={(e) => setTemplateId(e.target.value)} required>
-                            <option value="">Selecione</option>
-                            {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                        </select>
-                    </div>
-                    <div className="form-group">
-                        <label className="form-label">Mês de referência *</label>
-                        <input type="month" className="form-input" value={referenceMonth} onChange={(e) => setReferenceMonth(e.target.value)} required />
-                    </div>
-                    <div className="form-group">
-                        <label className="form-label">Prazo</label>
-                        <input type="date" className="form-input" value={dueDate} onChange={(e) => { setDueDate(e.target.value); setDueDateTouched(true); }} />
-                    </div>
-                    <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={saving}>
+                    <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: 'var(--space-4)' }} disabled={saving}>
                         {saving ? 'Criando...' : 'Criar briefing e gerar link'}
                     </button>
                 </form>

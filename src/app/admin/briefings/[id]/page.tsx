@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Copy, Check, RefreshCw, Ban, RotateCcw, Archive, Download, FileJson, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { Copy, Check, RefreshCw, Ban, RotateCcw, Archive, Download, FileJson, AlertTriangle, ArrowLeft, Link2, Eye, Clock } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 import { buildBriefingExport, type ExportSection, type ExportAnswer } from '@/lib/briefings/export';
 import { formatMonthBR, formatDateBR, dbDateToIso } from '@/lib/briefings/dates';
@@ -32,6 +32,27 @@ const EVENT_LABEL: Record<string, string> = {
     submitted: 'Briefing enviado', reopened: 'Reaberto para edição', link_revoked: 'Link revogado', archived: 'Arquivado',
     autosave_rejected: 'Tentativa de salvar campo inválido',
 };
+
+function Panel({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
+    return (
+        <div className="card">
+            <div className="card-header">
+                <h2 className="card-title">{title}</h2>
+                {action}
+            </div>
+            {children}
+        </div>
+    );
+}
+
+function InfoItem({ label, value }: { label: string; value: React.ReactNode }) {
+    return (
+        <div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 3 }}>{label}</div>
+            <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{value}</div>
+        </div>
+    );
+}
 
 export default function BriefingDetailPage() {
     const params = useParams<{ id: string }>();
@@ -74,6 +95,7 @@ export default function BriefingDetailPage() {
     const linkStatus = activeLink
         ? activeLink.revokedAt ? 'revogado' : new Date(activeLink.expiresAt) < new Date() ? 'expirado' : 'ativo'
         : null;
+    const linkStatusColor = linkStatus === 'ativo' ? 'var(--color-success)' : linkStatus === 'expirado' ? 'var(--color-warning)' : 'var(--color-danger)';
 
     const runAction = async (action: string, extra?: Record<string, unknown>) => {
         setBusy(true);
@@ -159,64 +181,64 @@ export default function BriefingDetailPage() {
         <div>
             <div className="page-header">
                 <div>
-                    <button className="btn btn-secondary btn-sm" onClick={() => router.push('/admin/briefings')} style={{ marginBottom: 8 }}>
+                    <button className="btn btn-secondary btn-sm" onClick={() => router.push('/admin/briefings')} style={{ marginBottom: 10 }}>
                         <ArrowLeft size={14} /> Voltar
                     </button>
                     <h1>{cycle.client.name}</h1>
-                    <p>{cycle.template.name} — {formatMonthBR(dbDateToIso(new Date(cycle.referenceMonth)))}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4, flexWrap: 'wrap' }}>
+                        <p style={{ margin: 0 }}>{cycle.template.name} — {formatMonthBR(dbDateToIso(new Date(cycle.referenceMonth)))}</p>
+                        <span className={`badge ${STATUS_BADGE[cycle.status] || 'badge-gray'}`}>{STATUS_LABEL[cycle.status] || cycle.status}</span>
+                        {cycle.dueDate && <span className="text-sm text-muted">Prazo: {formatDateBR(dbDateToIso(new Date(cycle.dueDate)))}</span>}
+                        {cycle.submittedAt && <span className="text-sm text-muted">Enviado: {formatDateBR(dbDateToIso(new Date(cycle.submittedAt)))}</span>}
+                    </div>
                 </div>
             </div>
 
-            <div className="page-content" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-                {/* Header info */}
-                <div className="card" style={{ padding: 'var(--space-4)', display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <span className={`badge ${STATUS_BADGE[cycle.status] || 'badge-gray'}`}>{STATUS_LABEL[cycle.status] || cycle.status}</span>
-                    {cycle.dueDate && <span className="text-sm text-muted">Prazo: {formatDateBR(dbDateToIso(new Date(cycle.dueDate)))}</span>}
-                    {cycle.submittedAt && <span className="text-sm text-muted">Enviado em: {formatDateBR(dbDateToIso(new Date(cycle.submittedAt)))}</span>}
-                </div>
-
-                {/* Link block */}
-                <div className="card" style={{ padding: 'var(--space-4)' }}>
-                    <h2 style={{ fontSize: '1rem', marginBottom: 'var(--space-3)' }}>Link</h2>
-
+            <div className="page-content" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+                {/* Link panel */}
+                <Panel
+                    title="Link"
+                    action={
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            <button className="btn btn-secondary btn-sm" onClick={handleRegenerate} disabled={busy || cycle.status === 'archived'}>
+                                <RefreshCw size={14} /> Gerar novo
+                            </button>
+                            {activeLink && !activeLink.revokedAt && (
+                                <button className="btn btn-secondary btn-sm" onClick={handleRevoke} disabled={busy}>
+                                    <Ban size={14} /> Revogar
+                                </button>
+                            )}
+                        </div>
+                    }
+                >
                     {newToken ? (
-                        <div style={{ marginBottom: 'var(--space-3)' }}>
-                            <p style={{ fontWeight: 600, color: 'var(--color-warning)', marginBottom: 4 }}>Este link aparece uma única vez. Copie agora.</p>
+                        <div>
+                            <p style={{ fontWeight: 600, color: 'var(--color-warning)', marginBottom: 8, fontSize: '0.85rem' }}>Este link aparece uma única vez. Copie agora.</p>
                             <div style={{ display: 'flex', gap: 8 }}>
                                 <input className="form-input" readOnly value={newLink} onFocus={(e) => e.target.select()} />
-                                <button type="button" className="btn btn-secondary" onClick={() => copy(newLink, 'link')}>
+                                <button type="button" className="btn btn-secondary" onClick={() => copy(newLink, 'link')} style={{ flexShrink: 0 }}>
                                     {copiedLink ? <Check size={16} /> : <Copy size={16} />}
                                 </button>
                             </div>
                         </div>
                     ) : activeLink ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 'var(--space-3)', fontSize: '0.85rem' }}>
-                            <div>Status do link: <strong style={{
-                                color: linkStatus === 'ativo' ? 'var(--color-success)' : linkStatus === 'expirado' ? 'var(--color-warning)' : 'var(--color-danger)',
-                            }}>{linkStatus}</strong></div>
-                            <div className="text-muted">Expira em {formatDateBR(dbDateToIso(new Date(activeLink.expiresAt)))}</div>
-                            <div className="text-muted">Aberto {activeLink.opensCount}x{activeLink.lastOpenedAt ? ` — última vez em ${formatDateBR(dbDateToIso(new Date(activeLink.lastOpenedAt)))}` : ''}</div>
-                            <div className="text-muted">Token: ······{activeLink.tokenPreview}</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-4)' }}>
+                            <InfoItem label="Status do link" value={<span style={{ color: linkStatusColor }}>{linkStatus}</span>} />
+                            <InfoItem label="Expira em" value={formatDateBR(dbDateToIso(new Date(activeLink.expiresAt)))} />
+                            <InfoItem label="Aberturas" value={activeLink.opensCount} />
+                            <InfoItem label="Última abertura" value={activeLink.lastOpenedAt ? formatDateBR(dbDateToIso(new Date(activeLink.lastOpenedAt))) : '—'} />
+                            <InfoItem label="Token" value={`······${activeLink.tokenPreview}`} />
                         </div>
                     ) : (
-                        <p className="text-sm text-muted" style={{ marginBottom: 'var(--space-3)' }}>Nenhum link ativo.</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
+                            <Link2 size={16} /> Nenhum link ativo.
+                        </div>
                     )}
-
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <button className="btn btn-secondary btn-sm" onClick={handleRegenerate} disabled={busy || cycle.status === 'archived'}>
-                            <RefreshCw size={14} /> Gerar novo link
-                        </button>
-                        {activeLink && !activeLink.revokedAt && (
-                            <button className="btn btn-secondary btn-sm" onClick={handleRevoke} disabled={busy}>
-                                <Ban size={14} /> Revogar link
-                            </button>
-                        )}
-                    </div>
-                </div>
+                </Panel>
 
                 {/* CONFERIR */}
                 {built.conferir.length > 0 && (
-                    <div className="card" style={{ padding: 'var(--space-4)', borderColor: 'var(--color-warning)' }}>
+                    <div className="card" style={{ borderColor: 'var(--color-warning)' }}>
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, color: 'var(--color-warning)' }}>
                             <AlertTriangle size={16} /> <strong>Conferir</strong>
                         </div>
@@ -227,54 +249,56 @@ export default function BriefingDetailPage() {
                 )}
 
                 {/* Respostas */}
-                <div className="card" style={{ padding: 'var(--space-4)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)', flexWrap: 'wrap', gap: 8 }}>
-                        <h2 style={{ fontSize: '1rem', margin: 0 }}>Respostas</h2>
+                <Panel
+                    title="Respostas"
+                    action={
                         <div style={{ display: 'flex', gap: 8 }}>
                             <button className="btn btn-secondary btn-sm" onClick={() => copy(built.text, 'text')}>
-                                {copiedText ? <Check size={14} /> : <Copy size={14} />} Copiar como texto
+                                {copiedText ? <Check size={14} /> : <Copy size={14} />} Copiar
                             </button>
                             <button className="btn btn-secondary btn-sm" onClick={downloadTxt}><Download size={14} /> .txt</button>
                             <button className="btn btn-secondary btn-sm" onClick={downloadJson}><FileJson size={14} /> JSON</button>
                         </div>
-                    </div>
-
+                    }
+                >
                     {built.sections.length === 0 && built.emptySections.length === 0 && (
                         <p className="text-sm text-muted">Nenhuma resposta ainda.</p>
                     )}
 
-                    {built.sections.map((section) => (
-                        <div key={section.title} style={{ marginBottom: 'var(--space-4)' }}>
-                            <h3 style={{ fontSize: '0.9rem', marginBottom: 8 }}>{section.title}</h3>
-                            {section.kind === 'single' ? (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                    {section.singleItems.map((item, i) => (
-                                        <div key={i} style={{ fontSize: '0.85rem' }}><span className="text-muted">{item.label}:</span> {item.value}</div>
-                                    ))}
-                                </div>
-                            ) : (
-                                section.repeaterGroups.map((group, gi) => (
-                                    <div key={gi} style={{ border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-md)', padding: 'var(--space-3)', marginBottom: 8 }}>
-                                        <strong style={{ fontSize: '0.85rem' }}>{group.itemLabel} {gi + 1}</strong>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
-                                            {group.items.map((item, i) => (
-                                                <div key={i} style={{ fontSize: '0.85rem' }}><span className="text-muted">{item.label}:</span> {item.value}</div>
-                                            ))}
-                                        </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+                        {built.sections.map((section) => (
+                            <div key={section.title}>
+                                <h3 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: 10, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{section.title}</h3>
+                                {section.kind === 'single' ? (
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--space-3)' }}>
+                                        {section.singleItems.map((item, i) => (
+                                            <InfoItem key={i} label={item.label} value={item.value} />
+                                        ))}
                                     </div>
-                                ))
-                            )}
-                        </div>
-                    ))}
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                        {section.repeaterGroups.map((group, gi) => (
+                                            <div key={gi} style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 'var(--space-4)', background: 'var(--color-bg)' }}>
+                                                <div className="badge badge-gray" style={{ marginBottom: 10 }}>{group.itemLabel} {gi + 1}</div>
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 'var(--space-3)' }}>
+                                                    {group.items.map((item, i) => (
+                                                        <InfoItem key={i} label={item.label} value={item.value} />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
 
-                    {built.emptySections.length > 0 && (
-                        <div style={{ marginTop: 'var(--space-3)', paddingTop: 'var(--space-3)', borderTop: '1px solid var(--color-border-light)' }}>
-                            {built.emptySections.map((es, i) => (
-                                <p key={i} className="text-sm text-muted">{es.emptyLabel}</p>
-                            ))}
-                        </div>
-                    )}
-                </div>
+                        {built.emptySections.map((es, i) => (
+                            <div key={i} style={{ border: '1px dashed var(--color-border)', borderRadius: 'var(--radius-md)', padding: 'var(--space-4)', textAlign: 'center' }}>
+                                <span className="text-sm text-muted">{es.emptyLabel}</span>
+                            </div>
+                        ))}
+                    </div>
+                </Panel>
 
                 {/* Actions */}
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -287,21 +311,31 @@ export default function BriefingDetailPage() {
                 </div>
 
                 {/* Histórico */}
-                <div className="card" style={{ padding: 'var(--space-4)' }}>
-                    <h2 style={{ fontSize: '1rem', marginBottom: 'var(--space-3)' }}>Histórico</h2>
+                <Panel title="Histórico">
                     {cycle.events.length === 0 ? (
                         <p className="text-sm text-muted">Nenhum evento ainda.</p>
                     ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            {cycle.events.map((ev) => (
-                                <div key={ev.id} style={{ fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-secondary)' }}>
-                                    <span>{EVENT_LABEL[ev.type] || ev.type}</span>
-                                    <span className="text-muted">{new Date(ev.createdAt).toLocaleString('pt-BR')}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            {cycle.events.map((ev, i) => (
+                                <div key={ev.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, paddingBottom: i < cycle.events.length - 1 ? 14 : 0, position: 'relative' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-primary)', marginTop: 5 }} />
+                                        {i < cycle.events.length - 1 && <div style={{ width: 1, flex: 1, background: 'var(--color-border)', marginTop: 4 }} />}
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', flex: 1, gap: 8, flexWrap: 'wrap' }}>
+                                        <span style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            {ev.type === 'link_opened' && <Eye size={13} style={{ color: 'var(--color-text-muted)' }} />}
+                                            {EVENT_LABEL[ev.type] || ev.type}
+                                        </span>
+                                        <span className="text-xs text-muted" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            <Clock size={11} /> {new Date(ev.createdAt).toLocaleString('pt-BR')}
+                                        </span>
+                                    </div>
                                 </div>
                             ))}
                         </div>
                     )}
-                </div>
+                </Panel>
             </div>
         </div>
     );

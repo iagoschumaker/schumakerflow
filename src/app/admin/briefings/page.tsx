@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ClipboardList, Plus } from 'lucide-react';
+import { ClipboardList, Plus, Send, PencilLine, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { formatMonthBR, formatDateBR, dbDateToIso } from '@/lib/briefings/dates';
 
 interface Cycle {
@@ -79,12 +79,16 @@ export default function BriefingsListPage() {
     };
 
     const lastUpdate = (cycle: Cycle) => {
-        const candidates = [
-            cycle.answers[0]?.updatedAt,
-            cycle.events[0]?.createdAt,
-        ].filter(Boolean) as string[];
+        const candidates = [cycle.answers[0]?.updatedAt, cycle.events[0]?.createdAt].filter(Boolean) as string[];
         if (candidates.length === 0) return null;
         return candidates.sort().reverse()[0];
+    };
+
+    const stats = {
+        sent: cycles.filter((c) => c.status === 'sent').length,
+        inProgress: cycles.filter((c) => c.status === 'in_progress').length,
+        submitted: cycles.filter((c) => c.status === 'submitted').length,
+        overdue: cycles.filter(isOverdue).length,
     };
 
     return (
@@ -100,6 +104,24 @@ export default function BriefingsListPage() {
             </div>
 
             <div className="page-content">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 24 }}>
+                    {[
+                        { icon: <Send size={18} />, color: 'var(--color-info)', value: stats.sent, label: 'Enviados', sub: 'aguardando' },
+                        { icon: <PencilLine size={18} />, color: 'var(--color-warning)', value: stats.inProgress, label: 'Preenchendo', sub: 'em andamento' },
+                        { icon: <CheckCircle2 size={18} />, color: 'var(--color-success)', value: stats.submitted, label: 'Recebidos', sub: 'prontos' },
+                        { icon: <AlertTriangle size={18} />, color: 'var(--color-danger)', value: stats.overdue, label: 'Atrasados', sub: 'passou do prazo' },
+                    ].map((c, i) => (
+                        <div key={i} className="card" style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, borderLeft: `3px solid ${c.color}` }}>
+                            <div style={{ width: 36, height: 36, borderRadius: 10, background: `color-mix(in srgb, ${c.color} 14%, transparent)`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: c.color, flexShrink: 0 }}>{c.icon}</div>
+                            <div style={{ minWidth: 0 }}>
+                                <div style={{ fontSize: '1.05rem', fontWeight: 800, color: c.color, lineHeight: 1.2 }}>{c.value}</div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', lineHeight: 1.3 }}>{c.label}</div>
+                                <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', opacity: 0.7 }}>{c.sub}</div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
                 <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-5)', flexWrap: 'wrap' }}>
                     <select className="form-input" style={{ maxWidth: 220 }} value={clientFilter} onChange={(e) => setClientFilter(e.target.value)}>
                         <option value="">Todos os clientes</option>
@@ -112,58 +134,64 @@ export default function BriefingsListPage() {
                     <input type="month" className="form-input" style={{ maxWidth: 180 }} value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} />
                 </div>
 
-                {loading ? (
-                    <div className="card animate-pulse" style={{ height: 200 }} />
-                ) : cycles.length === 0 ? (
-                    <div className="card empty-state">
-                        <div className="empty-icon"><ClipboardList size={32} /></div>
-                        <h3>Nenhum briefing ainda</h3>
-                        <p className="text-sm text-muted">
-                            Um briefing é um formulário que o cliente preenche pelo link, sem precisar de login,
-                            para você planejar o conteúdo do mês.
-                        </p>
-                        <button className="btn btn-primary mt-2" onClick={() => router.push('/admin/briefings/novo')}>
-                            <Plus size={16} /> Criar o primeiro
-                        </button>
+                <div className="card" style={{ padding: 0 }}>
+                    <div className="card-header" style={{ padding: 'var(--space-5) var(--space-6) 0' }}>
+                        <h2 className="card-title">Ciclos</h2>
                     </div>
-                ) : (
-                    <div className="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Cliente</th>
-                                    <th>Modelo</th>
-                                    <th>Mês</th>
-                                    <th>Status</th>
-                                    <th>Prazo</th>
-                                    <th>Atualizado</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {cycles.map((cycle) => {
-                                    const update = lastUpdate(cycle);
-                                    const overdue = isOverdue(cycle);
-                                    return (
-                                        <tr key={cycle.id} style={{ cursor: 'pointer' }} onClick={() => router.push(`/admin/briefings/${cycle.id}`)}>
-                                            <td data-label="Cliente" className="font-semibold">{cycle.client.name}</td>
-                                            <td data-label="Modelo" className="text-secondary">{cycle.template.name}</td>
-                                            <td data-label="Mês">{formatMonthBR(dbDateToIso(new Date(cycle.referenceMonth)))}</td>
-                                            <td data-label="Status">
-                                                <span className={`badge ${STATUS_BADGE[cycle.status] || 'badge-gray'}`}>{STATUS_LABEL[cycle.status] || cycle.status}</span>
-                                            </td>
-                                            <td data-label="Prazo" style={overdue ? { color: 'var(--color-danger)', fontWeight: 600 } : undefined}>
-                                                {cycle.dueDate ? formatDateBR(dbDateToIso(new Date(cycle.dueDate))) : '—'}
-                                            </td>
-                                            <td data-label="Atualizado" className="text-secondary">
-                                                {update ? formatDateBR(dbDateToIso(new Date(update))) : '—'}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+
+                    {loading ? (
+                        <div style={{ padding: 'var(--space-6)' }}><div className="animate-pulse" style={{ height: 160, borderRadius: 'var(--radius-md)', background: 'var(--color-bg)' }} /></div>
+                    ) : cycles.length === 0 ? (
+                        <div className="empty-state">
+                            <div className="empty-icon"><ClipboardList size={32} /></div>
+                            <h3>Nenhum briefing ainda</h3>
+                            <p className="text-sm text-muted">
+                                Um briefing é um formulário que o cliente preenche pelo link, sem precisar de login,
+                                para você planejar o conteúdo do mês.
+                            </p>
+                            <button className="btn btn-primary mt-4" onClick={() => router.push('/admin/briefings/novo')}>
+                                <Plus size={16} /> Criar o primeiro
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="table-container" style={{ border: 'none', borderTop: '1px solid var(--color-border)', marginTop: 'var(--space-5)', borderRadius: 0 }}>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Cliente</th>
+                                        <th>Modelo</th>
+                                        <th>Mês</th>
+                                        <th>Status</th>
+                                        <th>Prazo</th>
+                                        <th>Atualizado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {cycles.map((cycle) => {
+                                        const update = lastUpdate(cycle);
+                                        const overdue = isOverdue(cycle);
+                                        return (
+                                            <tr key={cycle.id} style={{ cursor: 'pointer' }} onClick={() => router.push(`/admin/briefings/${cycle.id}`)}>
+                                                <td data-label="Cliente" className="font-semibold">{cycle.client.name}</td>
+                                                <td data-label="Modelo" className="text-secondary">{cycle.template.name}</td>
+                                                <td data-label="Mês">{formatMonthBR(dbDateToIso(new Date(cycle.referenceMonth)))}</td>
+                                                <td data-label="Status">
+                                                    <span className={`badge ${STATUS_BADGE[cycle.status] || 'badge-gray'}`}>{STATUS_LABEL[cycle.status] || cycle.status}</span>
+                                                </td>
+                                                <td data-label="Prazo" style={overdue ? { color: 'var(--color-danger)', fontWeight: 600 } : undefined}>
+                                                    {cycle.dueDate ? formatDateBR(dbDateToIso(new Date(cycle.dueDate))) : '—'}
+                                                </td>
+                                                <td data-label="Atualizado" className="text-secondary text-sm">
+                                                    {update ? formatDateBR(dbDateToIso(new Date(update))) : '—'}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

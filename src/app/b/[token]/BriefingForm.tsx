@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Trash2, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
+import styles from './briefing-public.module.css';
 
 type FieldType = 'text' | 'textarea' | 'date' | 'month' | 'time' | 'money' | 'number' | 'select' | 'boolean' | 'email' | 'phone' | 'url';
 
@@ -37,6 +38,7 @@ interface AnswerIn {
 interface Props {
     token: string;
     clientName: string;
+    referenceMonthLabel: string;
     sections: Section[];
     initialAnswers: AnswerIn[];
 }
@@ -47,7 +49,7 @@ function answerKey(fieldId: string, groupIndex: number) {
     return `${fieldId}:${groupIndex}`;
 }
 
-export default function BriefingForm({ token, clientName, sections, initialAnswers }: Props) {
+export default function BriefingForm({ token, clientName, referenceMonthLabel, sections, initialAnswers }: Props) {
     const [values, setValues] = useState<Map<string, unknown>>(() => {
         const m = new Map<string, unknown>();
         for (const a of initialAnswers) m.set(answerKey(a.fieldId, a.groupIndex), a.value?.raw ?? '');
@@ -185,29 +187,32 @@ export default function BriefingForm({ token, clientName, sections, initialAnswe
 
     if (submitted) {
         return (
-            <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-4)', background: 'var(--color-bg)' }}>
-                <div className="card" style={{ maxWidth: 420, width: '100%', textAlign: 'center', padding: 'var(--space-8) var(--space-6)' }}>
-                    <CheckCircle2 size={40} color="var(--color-success)" style={{ marginBottom: 'var(--space-3)' }} />
-                    <h1 style={{ fontSize: '1.15rem', marginBottom: 'var(--space-2)' }}>Briefing enviado!</h1>
-                    <p style={{ color: 'var(--color-text-secondary)' }}>Obrigado, {clientName}. Recebemos suas respostas.</p>
+            <div className={styles.stateWrapper}>
+                <div className={styles.stateCard}>
+                    <CheckCircle2 size={40} color="#34C759" />
+                    <h1 className={styles.stateTitle}>Briefing enviado!</h1>
+                    <p className={styles.stateMessage}>Obrigado, {clientName}. Recebemos suas respostas.</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div style={{ minHeight: '100dvh', background: 'var(--color-bg)', paddingBottom: 100 }}>
-            <div style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)', padding: 'var(--space-3) var(--space-4)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <strong style={{ fontSize: '0.95rem' }}>{clientName}</strong>
+        <div className={styles.page}>
+            <div className={styles.header}>
+                <div className={styles.headerTop}>
+                    <div>
+                        <p className={styles.clientName}>{clientName}</p>
+                        <p className={styles.briefingTitle}>Briefing de {referenceMonthLabel}</p>
+                    </div>
                     <SaveIndicator status={status} savedAt={savedAt} />
                 </div>
-                <div style={{ height: 6, background: 'var(--color-bg-secondary)', borderRadius: 'var(--radius-full)', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${progress}%`, background: 'var(--color-primary)', transition: 'width 0.3s' }} />
+                <div className={styles.progressTrack}>
+                    <div className={styles.progressFill} style={{ width: `${progress}%` }} />
                 </div>
             </div>
 
-            <div style={{ maxWidth: 640, margin: '0 auto', padding: 'var(--space-4)' }}>
+            <div className={styles.content}>
                 {sections.map((section) => (
                     <SectionBlock
                         key={section.id}
@@ -217,39 +222,41 @@ export default function BriefingForm({ token, clientName, sections, initialAnswe
                         onChange={setValue}
                         onAddGroup={() => addGroup(section.id)}
                         onRemoveGroup={(gi) => removeGroup(section.id, gi)}
-                        missingFieldIds={new Set(missing.filter((m) => sections.find(s => s.id === section.id)?.fields.some(f => f.id === m.fieldId)).map((m) => m.fieldId))}
+                        missingFieldIds={new Set(missing.filter((m) => section.fields.some((f) => f.id === m.fieldId)).map((m) => m.fieldId))}
                     />
                 ))}
 
                 {missing.length > 0 && (
-                    <div className="card" style={{ borderColor: 'var(--color-danger)', padding: 'var(--space-4)', marginBottom: 'var(--space-4)' }}>
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, color: 'var(--color-danger)' }}>
+                    <div className={styles.missingCard}>
+                        <div className={styles.missingHeader}>
                             <AlertCircle size={18} />
-                            <strong>Faltam campos obrigatórios</strong>
+                            Faltam campos obrigatórios
                         </div>
-                        <ul style={{ paddingLeft: 20, margin: 0, color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
+                        <ul className={styles.missingList}>
                             {missing.map((m, i) => (
                                 <li key={i}>{m.sectionTitle} — {m.label}</li>
                             ))}
                         </ul>
                     </div>
                 )}
+            </div>
 
-                <button className="btn btn-primary btn-lg" style={{ width: '100%' }} onClick={handleSubmitClick} disabled={submitting}>
+            <div className={styles.footer}>
+                <button className={styles.submitButton} onClick={handleSubmitClick} disabled={submitting}>
                     {submitting ? <Loader2 size={18} className="spin" /> : 'Enviar briefing'}
                 </button>
             </div>
 
             {confirmOpen && (
-                <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50 }} onClick={() => setConfirmOpen(false)}>
-                    <div className="card" style={{ maxWidth: 480, width: '100%', margin: 'var(--space-4)', padding: 'var(--space-6)' }} onClick={(e) => e.stopPropagation()}>
-                        <h2 style={{ fontSize: '1.05rem', marginBottom: 'var(--space-3)' }}>Confirmar envio?</h2>
-                        <p style={{ color: 'var(--color-text-secondary)', marginBottom: 'var(--space-4)', fontSize: '0.9rem' }}>
+                <div className={styles.modalOverlay} onClick={() => setConfirmOpen(false)}>
+                    <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+                        <h2 className={styles.modalTitle}>Confirmar envio?</h2>
+                        <p className={styles.modalText}>
                             {progress < 100 ? `Você preencheu ${progress}% do formulário. Depois de enviar, não dá para editar.` : 'Depois de enviar, não dá para editar.'}
                         </p>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                            <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setConfirmOpen(false)}>Voltar</button>
-                            <button className="btn btn-primary" style={{ flex: 1 }} onClick={doSubmit}>Enviar</button>
+                        <div className={styles.modalActions}>
+                            <button className={styles.secondaryButton} onClick={() => setConfirmOpen(false)}>Voltar</button>
+                            <button className={styles.primaryButton} onClick={doSubmit}>Enviar</button>
                         </div>
                     </div>
                 </div>
@@ -259,10 +266,10 @@ export default function BriefingForm({ token, clientName, sections, initialAnswe
 }
 
 function SaveIndicator({ status, savedAt }: { status: SaveStatus; savedAt: Date | null }) {
-    if (status === 'saving') return <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>salvando…</span>;
-    if (status === 'error') return <span style={{ fontSize: '0.75rem', color: 'var(--color-danger)' }}>falha ao salvar, tentando de novo</span>;
-    if (status === 'saved' && savedAt) return <span style={{ fontSize: '0.75rem', color: 'var(--color-success)' }}>salvo às {savedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>;
-    return <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>&nbsp;</span>;
+    if (status === 'saving') return <span className={`${styles.saveIndicator} ${styles.saveIndicatorSaving}`}>salvando…</span>;
+    if (status === 'error') return <span className={`${styles.saveIndicator} ${styles.saveIndicatorError}`}>falha ao salvar, tentando de novo</span>;
+    if (status === 'saved' && savedAt) return <span className={`${styles.saveIndicator} ${styles.saveIndicatorSaved}`}>salvo às {savedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>;
+    return <span className={styles.saveIndicator}>&nbsp;</span>;
 }
 
 function SectionBlock({
@@ -277,14 +284,12 @@ function SectionBlock({
     missingFieldIds: Set<string>;
 }) {
     return (
-        <div className="card" style={{ padding: 'var(--space-4)', marginBottom: 'var(--space-4)' }}>
-            <div style={{ marginBottom: 'var(--space-3)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <h2 style={{ fontSize: '1rem', margin: 0 }}>{section.title}</h2>
-                    {section.isOptional && <span className="badge" style={{ background: 'var(--color-bg-secondary)', color: 'var(--color-text-muted)' }}>se houver</span>}
-                </div>
-                {section.description && <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: 4 }}>{section.description}</p>}
+        <div className={styles.sectionCard}>
+            <div className={styles.sectionHeader}>
+                <h2 className={styles.sectionTitle}>{section.title}</h2>
+                {section.isOptional && <span className={styles.optionalBadge}>se houver</span>}
             </div>
+            {section.description && <p className={styles.sectionDescription}>{section.description}</p>}
 
             {section.kind === 'single' && (
                 <FieldGrid section={section} groupIndex={0} values={values} onChange={onChange} missingFieldIds={missingFieldIds} />
@@ -292,25 +297,30 @@ function SectionBlock({
 
             {section.kind === 'repeater' && (
                 <>
-                    {groupIndices.length === 0 && (
-                        <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: 'var(--space-3)' }}>
-                            {section.emptyLabel || 'Nenhum item adicionado ainda.'}
-                        </p>
-                    )}
                     {groupIndices.map((gi, idx) => (
-                        <div key={gi} style={{ border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-md)', padding: 'var(--space-3)', marginBottom: 'var(--space-3)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                                <strong style={{ fontSize: '0.9rem' }}>{section.repeaterItemLabel || 'Item'} {idx + 1}</strong>
-                                <button type="button" className="btn btn-sm btn-secondary" onClick={() => onRemoveGroup(gi)}>
-                                    <Trash2 size={14} />
+                        <div key={gi} className={styles.repeaterItem}>
+                            <div className={styles.repeaterItemHeader}>
+                                <span className={styles.repeaterItemTitle}>{section.repeaterItemLabel || 'Item'} {idx + 1}</span>
+                                <button type="button" className={styles.removeButton} onClick={() => onRemoveGroup(gi)} aria-label="Remover">
+                                    <Trash2 size={16} />
                                 </button>
                             </div>
                             <FieldGrid section={section} groupIndex={gi} values={values} onChange={onChange} missingFieldIds={missingFieldIds} />
                         </div>
                     ))}
-                    <button type="button" className="btn btn-secondary" onClick={onAddGroup} style={{ width: '100%' }}>
-                        <Plus size={16} /> Adicionar {section.repeaterItemLabel?.toLowerCase() || 'item'}
-                    </button>
+
+                    {groupIndices.length === 0 ? (
+                        <div className={styles.repeaterEmpty}>
+                            <p className={styles.repeaterEmptyLabel}>{section.emptyLabel || 'Nenhum item adicionado ainda.'}</p>
+                            <button type="button" className={styles.addButton} onClick={onAddGroup}>
+                                <Plus size={16} /> Adicionar {section.repeaterItemLabel?.toLowerCase() || 'item'}
+                            </button>
+                        </div>
+                    ) : (
+                        <button type="button" className={`${styles.addButton} ${styles.addButtonBlock}`} onClick={onAddGroup}>
+                            <Plus size={16} /> Adicionar {section.repeaterItemLabel?.toLowerCase() || 'item'}
+                        </button>
+                    )}
                 </>
             )}
         </div>
@@ -327,19 +337,19 @@ function FieldGrid({
     missingFieldIds: Set<string>;
 }) {
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+        <div className={styles.fieldGrid}>
             {section.fields.map((field) => (
-                <div key={field.id} className="form-group" style={{ gridColumn: field.width === 'full' ? '1 / -1' : undefined, marginBottom: 0 }}>
-                    <label className="form-label">
-                        {field.label}{field.isRequired && <span style={{ color: 'var(--color-danger)' }}> *</span>}
+                <div key={field.id} className={`${styles.field} ${field.width === 'full' ? styles.fieldFull : ''}`}>
+                    <label className={styles.fieldLabel}>
+                        {field.label}{field.isRequired && <span className={styles.required}> *</span>}
                     </label>
-                    {field.hint && <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: -4, marginBottom: 6 }}>{field.hint}</p>}
+                    {field.hint && <p className={styles.fieldHint}>{field.hint}</p>}
                     <FieldInput
                         field={field}
                         value={values.get(answerKey(field.id, groupIndex)) ?? ''}
                         onChange={(raw) => onChange(field.id, groupIndex, raw)}
                     />
-                    {missingFieldIds.has(field.id) && <p className="form-error">Obrigatório</p>}
+                    {missingFieldIds.has(field.id) && <p className={styles.fieldError}>Obrigatório</p>}
                 </div>
             ))}
         </div>
@@ -351,22 +361,21 @@ function FieldInput({ field, value, onChange }: { field: Field; value: unknown; 
 
     switch (field.type) {
         case 'textarea':
-            return <textarea className="form-textarea" placeholder={field.placeholder || undefined} value={strValue} onChange={(e) => onChange(e.target.value)} />;
+            return <textarea className={styles.textarea} placeholder={field.placeholder || undefined} value={strValue} onChange={(e) => onChange(e.target.value)} />;
         case 'date':
-            return <input type="date" className="form-input" value={strValue} onChange={(e) => onChange(e.target.value)} />;
+            return <input type="date" className={styles.input} value={strValue} onChange={(e) => onChange(e.target.value)} />;
         case 'month':
-            return <input type="month" className="form-input" value={strValue} onChange={(e) => onChange(e.target.value)} />;
+            return <input type="month" className={styles.input} value={strValue} onChange={(e) => onChange(e.target.value)} />;
         case 'time':
-            return <input type="time" className="form-input" value={strValue} onChange={(e) => onChange(e.target.value)} />;
+            return <input type="time" className={styles.input} value={strValue} onChange={(e) => onChange(e.target.value)} />;
         case 'money':
             return (
-                <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>R$</span>
+                <div className={styles.moneyWrapper}>
+                    <span className={styles.moneyPrefix}>R$</span>
                     <input
                         type="text"
                         inputMode="decimal"
-                        className="form-input"
-                        style={{ paddingLeft: 32 }}
+                        className={`${styles.input} ${styles.moneyInput}`}
                         placeholder="0,00"
                         value={strValue}
                         onChange={(e) => onChange(e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'))}
@@ -374,10 +383,10 @@ function FieldInput({ field, value, onChange }: { field: Field; value: unknown; 
                 </div>
             );
         case 'number':
-            return <input type="number" className="form-input" value={strValue} onChange={(e) => onChange(e.target.value)} />;
+            return <input type="number" className={styles.input} value={strValue} onChange={(e) => onChange(e.target.value)} />;
         case 'select':
             return (
-                <select className="form-select" value={strValue} onChange={(e) => onChange(e.target.value)}>
+                <select className={styles.select} value={strValue} onChange={(e) => onChange(e.target.value)}>
                     <option value="">Selecione</option>
                     {(field.options || []).map((opt) => (
                         <option key={opt} value={opt}>{opt}</option>
@@ -386,19 +395,19 @@ function FieldInput({ field, value, onChange }: { field: Field; value: unknown; 
             );
         case 'boolean':
             return (
-                <select className="form-select" value={strValue} onChange={(e) => onChange(e.target.value)}>
+                <select className={styles.select} value={strValue} onChange={(e) => onChange(e.target.value)}>
                     <option value="">Selecione</option>
                     <option value="true">Sim</option>
                     <option value="false">Não</option>
                 </select>
             );
         case 'email':
-            return <input type="email" className="form-input" placeholder={field.placeholder || undefined} value={strValue} onChange={(e) => onChange(e.target.value)} />;
+            return <input type="email" className={styles.input} placeholder={field.placeholder || undefined} value={strValue} onChange={(e) => onChange(e.target.value)} />;
         case 'phone':
-            return <input type="tel" className="form-input" placeholder={field.placeholder || undefined} value={strValue} onChange={(e) => onChange(e.target.value)} />;
+            return <input type="tel" className={styles.input} placeholder={field.placeholder || undefined} value={strValue} onChange={(e) => onChange(e.target.value)} />;
         case 'url':
-            return <input type="url" className="form-input" placeholder={field.placeholder || undefined} value={strValue} onChange={(e) => onChange(e.target.value)} />;
+            return <input type="url" className={styles.input} placeholder={field.placeholder || undefined} value={strValue} onChange={(e) => onChange(e.target.value)} />;
         default:
-            return <input type="text" className="form-input" placeholder={field.placeholder || undefined} value={strValue} onChange={(e) => onChange(e.target.value)} />;
+            return <input type="text" className={styles.input} placeholder={field.placeholder || undefined} value={strValue} onChange={(e) => onChange(e.target.value)} />;
     }
 }

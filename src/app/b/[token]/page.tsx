@@ -1,8 +1,10 @@
 import { headers } from 'next/headers';
+import { XCircle, Ban, Clock, CheckCircle2, Archive } from 'lucide-react';
 import prisma from '@/lib/db';
 import { hashToken, hashIp } from '@/lib/briefings/token';
-import { formatDateBR, dbDateToIso } from '@/lib/briefings/dates';
+import { dbDateToIso, formatDateBR, formatMonthBR } from '@/lib/briefings/dates';
 import BriefingForm from './BriefingForm';
+import styles from './briefing-public.module.css';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,12 +13,13 @@ export const metadata = {
     title: 'Briefing',
 };
 
-function StateMessage({ title, message }: { title: string; message: string }) {
+function StatePage({ icon, title, message }: { icon: React.ReactNode; title: string; message: string }) {
     return (
-        <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-4)', background: 'var(--color-bg)' }}>
-            <div className="card" style={{ maxWidth: 420, width: '100%', textAlign: 'center', padding: 'var(--space-8) var(--space-6)' }}>
-                <h1 style={{ fontSize: '1.15rem', marginBottom: 'var(--space-3)' }}>{title}</h1>
-                <p style={{ color: 'var(--color-text-secondary)' }}>{message}</p>
+        <div className={styles.stateWrapper}>
+            <div className={styles.stateCard}>
+                {icon}
+                <h1 className={styles.stateTitle}>{title}</h1>
+                <p className={styles.stateMessage}>{message}</p>
             </div>
         </div>
     );
@@ -41,7 +44,6 @@ export default async function BriefingPublicPage({ params }: { params: Promise<{
                     template: {
                         include: {
                             sections: {
-                                where: {},
                                 orderBy: { sortOrder: 'asc' },
                                 include: { fields: { where: { isActive: true }, orderBy: { sortOrder: 'asc' } } },
                             },
@@ -54,24 +56,25 @@ export default async function BriefingPublicPage({ params }: { params: Promise<{
     });
 
     if (!link) {
-        return <StateMessage title="Link inválido" message="Verifique o link recebido ou fale com seu contato." />;
+        return <StatePage icon={<XCircle size={40} color="#FF3B30" />} title="Link inválido" message="Verifique o link recebido ou fale com seu contato." />;
     }
     if (link.revokedAt) {
-        return <StateMessage title="Link cancelado" message="Este link foi cancelado. Fale com seu contato." />;
+        return <StatePage icon={<Ban size={40} color="#FF3B30" />} title="Link cancelado" message="Este link foi cancelado. Fale com seu contato." />;
     }
     if (link.expiresAt < new Date()) {
-        return <StateMessage title="Link expirado" message="Este link expirou. Peça um novo ao seu contato." />;
+        return <StatePage icon={<Clock size={40} color="#FF9500" />} title="Link expirado" message="Este link expirou. Peça um novo ao seu contato." />;
     }
 
     const cycle = link.cycle;
 
     if (cycle.status === 'archived') {
-        return <StateMessage title="Briefing encerrado" message="Este briefing foi encerrado." />;
+        return <StatePage icon={<Archive size={40} color="#8E8E93" />} title="Briefing encerrado" message="Este briefing foi encerrado." />;
     }
 
     if (cycle.status === 'submitted') {
         return (
-            <StateMessage
+            <StatePage
+                icon={<CheckCircle2 size={40} color="#34C759" />}
                 title="Briefing enviado"
                 message={`Recebido${cycle.submittedAt ? ` em ${formatDateBR(dbDateToIso(cycle.submittedAt))}` : ''}. Obrigado! Se precisar alterar algo, fale com seu contato.`}
             />
@@ -105,6 +108,7 @@ export default async function BriefingPublicPage({ params }: { params: Promise<{
         <BriefingForm
             token={token}
             clientName={cycle.client.name}
+            referenceMonthLabel={formatMonthBR(dbDateToIso(cycle.referenceMonth))}
             sections={cycle.template.sections.map((s) => ({
                 id: s.id,
                 title: s.title,
