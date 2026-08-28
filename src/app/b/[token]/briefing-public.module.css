@@ -1,28 +1,50 @@
 /*
-  Este formulário é do cliente, não do admin. Fica sempre claro,
-  independente do tema (claro/escuro) do painel — por isso as cores
-  são fixas aqui, não puxadas de globals.css (que muda com o tema do
-  admin). São os mesmos tons do tema claro do sistema, só que travados.
+  Este formulário é do cliente da agência (o tenant), não do admin.
+  Sempre escuro, com a cor de marca do tenant (--pub-primary é
+  sobrescrita inline por tenant.primaryColor) -- mesmo tratamento já
+  usado em /share/[token] para páginas públicas com identidade do
+  cliente da agência.
 */
 .page {
-    --pub-primary: #007AFF;
-    --pub-primary-hover: #0066D6;
+    --pub-primary: #6366f1;
     --pub-success: #34C759;
     --pub-warning: #FF9500;
     --pub-danger: #FF3B30;
-    --pub-bg: #F2F2F7;
-    --pub-surface: #FFFFFF;
-    --pub-border: #D1D1D6;
-    --pub-border-light: #E5E5EA;
-    --pub-text: #1C1C1E;
-    --pub-text-secondary: #3A3A3C;
-    --pub-text-muted: #8E8E93;
+    --pub-bg: #0a0a0f;
+    --pub-surface: #15151f;
+    --pub-surface-2: #1c1c2a;
+    --pub-border: #2a2a3a;
+    --pub-border-light: #1f1f2e;
+    --pub-text: #ffffff;
+    --pub-text-secondary: #c4c4cc;
+    --pub-text-muted: #8b8b98;
 
     min-height: 100dvh;
     background: var(--pub-bg);
     color: var(--pub-text);
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    padding-bottom: 96px;
+    color-scheme: dark;
+}
+
+.brandBar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--pub-border-light);
+}
+
+.brandLogo {
+    height: 28px;
+    width: auto;
+    border-radius: 6px;
+    object-fit: contain;
+}
+
+.brandName {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--pub-text-secondary);
 }
 
 .header {
@@ -31,6 +53,9 @@
     z-index: 10;
     background: var(--pub-surface);
     border-bottom: 1px solid var(--pub-border-light);
+}
+
+.headerInner {
     padding: 16px 20px;
 }
 
@@ -125,7 +150,7 @@
     font-weight: 600;
     padding: 2px 8px;
     border-radius: 999px;
-    background: var(--pub-bg);
+    background: var(--pub-surface-2);
     color: var(--pub-text-muted);
 }
 
@@ -176,22 +201,36 @@
     font-family: inherit;
     border: 1px solid var(--pub-border);
     border-radius: 12px;
-    background: var(--pub-surface);
+    background: var(--pub-surface-2);
     color: var(--pub-text);
     outline: none;
     transition: border-color 0.15s;
+    color-scheme: dark;
+}
+
+.input::placeholder,
+.textarea::placeholder {
+    color: var(--pub-text-muted);
 }
 
 .input:focus,
 .select:focus,
 .textarea:focus {
     border-color: var(--pub-primary);
-    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--pub-primary) 25%, transparent);
 }
 
 .textarea {
     min-height: 90px;
     resize: vertical;
+}
+
+/* Native date/month/time pickers: whole field is clickable (see
+   FieldInput's onClick -> showPicker()), so make the intent obvious. */
+.input[type="date"],
+.input[type="month"],
+.input[type="time"] {
+    cursor: pointer;
 }
 
 .moneyWrapper {
@@ -245,7 +284,7 @@
     cursor: pointer;
 }
 .removeButton:hover {
-    background: var(--pub-border-light);
+    background: var(--pub-surface-2);
     color: var(--pub-danger);
 }
 
@@ -269,7 +308,7 @@
     padding: 10px 18px;
     border-radius: 999px;
     border: 1.5px solid var(--pub-primary);
-    background: var(--pub-surface);
+    background: transparent;
     color: var(--pub-primary);
     font-size: 0.85rem;
     font-weight: 600;
@@ -277,7 +316,7 @@
     min-height: 44px;
 }
 .addButton:hover {
-    background: rgba(0, 122, 255, 0.06);
+    background: color-mix(in srgb, var(--pub-primary) 12%, transparent);
 }
 
 .addButtonBlock {
@@ -309,25 +348,22 @@
     color: var(--pub-text-secondary);
 }
 
+/* Not fixed anymore -- sits at the end of the page, in normal flow,
+   right after .content. */
 .footer {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: var(--pub-surface);
-    border-top: 1px solid var(--pub-border-light);
-    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-    z-index: 20;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 4px 16px 40px;
 }
 
 .submitButton {
     width: 100%;
-    min-height: 52px;
-    border-radius: 14px;
+    padding: 14px 24px;
+    border-radius: 12px;
     border: none;
     background: var(--pub-primary);
     color: #fff;
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 700;
     cursor: pointer;
     display: flex;
@@ -340,13 +376,13 @@
     cursor: not-allowed;
 }
 .submitButton:hover:not(:disabled) {
-    background: var(--pub-primary-hover);
+    filter: brightness(1.1);
 }
 
 .modalOverlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.4);
+    background: rgba(0, 0, 0, 0.6);
     display: flex;
     align-items: flex-end;
     justify-content: center;
@@ -357,6 +393,7 @@
     width: 100%;
     max-width: 480px;
     background: var(--pub-surface);
+    border: 1px solid var(--pub-border-light);
     border-radius: 20px 20px 0 0;
     padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
 }
@@ -384,7 +421,7 @@
     min-height: 48px;
     border-radius: 12px;
     border: 1px solid var(--pub-border);
-    background: var(--pub-surface);
+    background: transparent;
     color: var(--pub-text);
     font-size: 0.9rem;
     font-weight: 600;
@@ -407,32 +444,39 @@
 .stateWrapper {
     min-height: 100dvh;
     display: flex;
+    flex-direction: column;
+    background: var(--pub-bg, #0a0a0f);
+    color-scheme: dark;
+}
+
+.stateCenter {
+    flex: 1;
+    display: flex;
     align-items: center;
     justify-content: center;
     padding: 24px;
-    background: #F2F2F7;
 }
 
 .stateCard {
     max-width: 420px;
     width: 100%;
-    background: #FFFFFF;
+    background: var(--pub-surface, #15151f);
+    border: 1px solid var(--pub-border-light, #1f1f2e);
     border-radius: 20px;
     padding: 40px 28px;
     text-align: center;
-    box-shadow: 0 2px 24px rgba(0, 0, 0, 0.06);
 }
 
 .stateTitle {
     font-size: 1.15rem;
     font-weight: 700;
-    color: #1C1C1E;
+    color: var(--pub-text, #fff);
     margin: 12px 0 8px;
 }
 
 .stateMessage {
     font-size: 0.9rem;
-    color: #3A3A3C;
+    color: var(--pub-text-secondary, #c4c4cc);
     line-height: 1.5;
     margin: 0;
 }

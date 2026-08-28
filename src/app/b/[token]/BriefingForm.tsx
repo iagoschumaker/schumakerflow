@@ -38,6 +38,9 @@ interface AnswerIn {
 interface Props {
     token: string;
     clientName: string;
+    tenantName: string;
+    tenantLogoUrl: string | null;
+    primaryColor: string | null;
     referenceMonthLabel: string;
     dueDateLabel: string | null;
     sections: Section[];
@@ -50,7 +53,7 @@ function answerKey(fieldId: string, groupIndex: number) {
     return `${fieldId}:${groupIndex}`;
 }
 
-export default function BriefingForm({ token, clientName, referenceMonthLabel, dueDateLabel, sections, initialAnswers }: Props) {
+export default function BriefingForm({ token, clientName, tenantName, tenantLogoUrl, primaryColor, referenceMonthLabel, dueDateLabel, sections, initialAnswers }: Props) {
     const [values, setValues] = useState<Map<string, unknown>>(() => {
         const m = new Map<string, unknown>();
         for (const a of initialAnswers) m.set(answerKey(a.fieldId, a.groupIndex), a.value?.raw ?? '');
@@ -186,31 +189,49 @@ export default function BriefingForm({ token, clientName, referenceMonthLabel, d
         }
     };
 
+    const brandStyle = primaryColor ? ({ '--pub-primary': primaryColor } as React.CSSProperties) : undefined;
+
     if (submitted) {
         return (
-            <div className={styles.stateWrapper}>
-                <div className={styles.stateCard}>
-                    <CheckCircle2 size={40} color="#34C759" />
-                    <h1 className={styles.stateTitle}>Briefing enviado!</h1>
-                    <p className={styles.stateMessage}>Obrigado, {clientName}. Recebemos suas respostas.</p>
+            <div className={styles.stateWrapper} style={brandStyle}>
+                {tenantName && (
+                    <div className={styles.brandBar}>
+                        {tenantLogoUrl && <img src={tenantLogoUrl} alt={tenantName} className={styles.brandLogo} />}
+                        <span className={styles.brandName}>{tenantName}</span>
+                    </div>
+                )}
+                <div className={styles.stateCenter}>
+                    <div className={styles.stateCard}>
+                        <CheckCircle2 size={40} color="#34C759" />
+                        <h1 className={styles.stateTitle}>Briefing enviado!</h1>
+                        <p className={styles.stateMessage}>Obrigado, {clientName}. Recebemos suas respostas.</p>
+                    </div>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className={styles.page}>
+        <div className={styles.page} style={brandStyle}>
             <div className={styles.header}>
-                <div className={styles.headerTop}>
-                    <div>
-                        <p className={styles.clientName}>{clientName}</p>
-                        <p className={styles.briefingTitle}>Briefing de {referenceMonthLabel}</p>
-                        {dueDateLabel && <p className={styles.briefingDue}>Prazo: {dueDateLabel}</p>}
+                {tenantName && (
+                    <div className={styles.brandBar}>
+                        {tenantLogoUrl && <img src={tenantLogoUrl} alt={tenantName} className={styles.brandLogo} />}
+                        <span className={styles.brandName}>{tenantName}</span>
                     </div>
-                    <SaveIndicator status={status} savedAt={savedAt} />
-                </div>
-                <div className={styles.progressTrack}>
-                    <div className={styles.progressFill} style={{ width: `${progress}%` }} />
+                )}
+                <div className={styles.headerInner}>
+                    <div className={styles.headerTop}>
+                        <div>
+                            <p className={styles.clientName}>{clientName}</p>
+                            <p className={styles.briefingTitle}>Briefing de {referenceMonthLabel}</p>
+                            {dueDateLabel && <p className={styles.briefingDue}>Prazo: {dueDateLabel}</p>}
+                        </div>
+                        <SaveIndicator status={status} savedAt={savedAt} />
+                    </div>
+                    <div className={styles.progressTrack}>
+                        <div className={styles.progressFill} style={{ width: `${progress}%` }} />
+                    </div>
                 </div>
             </div>
 
@@ -358,18 +379,34 @@ function FieldGrid({
     );
 }
 
+const DEFAULT_PLACEHOLDER: Partial<Record<FieldType, string>> = {
+    text: 'Digite aqui',
+    textarea: 'Escreva aqui...',
+    number: '0',
+    email: 'seuemail@exemplo.com',
+    phone: '(11) 99999-9999',
+    url: 'https://...',
+};
+
+// Native date/month/time inputs open their picker from a small icon that's
+// easy to miss -- showPicker() makes the whole field open it on click/focus.
+function openPicker(e: React.SyntheticEvent<HTMLInputElement>) {
+    e.currentTarget.showPicker?.();
+}
+
 function FieldInput({ field, value, onChange }: { field: Field; value: unknown; onChange: (raw: unknown) => void }) {
     const strValue = typeof value === 'string' ? value : value === null || value === undefined ? '' : String(value);
+    const placeholder = field.placeholder || DEFAULT_PLACEHOLDER[field.type];
 
     switch (field.type) {
         case 'textarea':
-            return <textarea className={styles.textarea} placeholder={field.placeholder || undefined} value={strValue} onChange={(e) => onChange(e.target.value)} />;
+            return <textarea className={styles.textarea} placeholder={placeholder} value={strValue} onChange={(e) => onChange(e.target.value)} />;
         case 'date':
-            return <input type="date" className={styles.input} value={strValue} onChange={(e) => onChange(e.target.value)} />;
+            return <input type="date" className={styles.input} value={strValue} onChange={(e) => onChange(e.target.value)} onClick={openPicker} onFocus={openPicker} />;
         case 'month':
-            return <input type="month" className={styles.input} value={strValue} onChange={(e) => onChange(e.target.value)} />;
+            return <input type="month" className={styles.input} value={strValue} onChange={(e) => onChange(e.target.value)} onClick={openPicker} onFocus={openPicker} />;
         case 'time':
-            return <input type="time" className={styles.input} value={strValue} onChange={(e) => onChange(e.target.value)} />;
+            return <input type="time" className={styles.input} value={strValue} onChange={(e) => onChange(e.target.value)} onClick={openPicker} onFocus={openPicker} />;
         case 'money':
             return (
                 <div className={styles.moneyWrapper}>
@@ -385,7 +422,7 @@ function FieldInput({ field, value, onChange }: { field: Field; value: unknown; 
                 </div>
             );
         case 'number':
-            return <input type="number" className={styles.input} value={strValue} onChange={(e) => onChange(e.target.value)} />;
+            return <input type="number" className={styles.input} placeholder={placeholder} value={strValue} onChange={(e) => onChange(e.target.value)} />;
         case 'select':
             return (
                 <select className={styles.select} value={strValue} onChange={(e) => onChange(e.target.value)}>
@@ -404,12 +441,12 @@ function FieldInput({ field, value, onChange }: { field: Field; value: unknown; 
                 </select>
             );
         case 'email':
-            return <input type="email" className={styles.input} placeholder={field.placeholder || undefined} value={strValue} onChange={(e) => onChange(e.target.value)} />;
+            return <input type="email" className={styles.input} placeholder={placeholder} value={strValue} onChange={(e) => onChange(e.target.value)} />;
         case 'phone':
-            return <input type="tel" className={styles.input} placeholder={field.placeholder || undefined} value={strValue} onChange={(e) => onChange(e.target.value)} />;
+            return <input type="tel" className={styles.input} placeholder={placeholder} value={strValue} onChange={(e) => onChange(e.target.value)} />;
         case 'url':
-            return <input type="url" className={styles.input} placeholder={field.placeholder || undefined} value={strValue} onChange={(e) => onChange(e.target.value)} />;
+            return <input type="url" className={styles.input} placeholder={placeholder} value={strValue} onChange={(e) => onChange(e.target.value)} />;
         default:
-            return <input type="text" className={styles.input} placeholder={field.placeholder || undefined} value={strValue} onChange={(e) => onChange(e.target.value)} />;
+            return <input type="text" className={styles.input} placeholder={placeholder} value={strValue} onChange={(e) => onChange(e.target.value)} />;
     }
 }
