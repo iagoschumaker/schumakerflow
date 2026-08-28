@@ -267,44 +267,52 @@ export default function BriefingDetailPage() {
     return (
         <div>
             <div className="page-header">
-                <div>
-                    <button className="btn btn-secondary btn-sm" onClick={() => router.push('/admin/briefings')} style={{ marginBottom: 10 }}>
-                        <ArrowLeft size={14} /> Voltar
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+                    <button
+                        onClick={() => router.push('/admin/briefings')}
+                        className="btn btn-secondary"
+                        style={{ padding: '8px 12px', flexShrink: 0 }}
+                    >
+                        <ArrowLeft size={18} />
                     </button>
-                    <h1>{cycle.client.name}</h1>
-                    {editing ? (
-                        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-4)', marginTop: 10, flexWrap: 'wrap' }}>
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label className="form-label">Mês de referência</label>
-                                <input type="month" className="form-input" value={editForm.referenceMonth} onChange={(e) => setEditForm({ ...editForm, referenceMonth: e.target.value })} />
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                        {editing ? (
+                            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label">Mês de referência</label>
+                                    <input type="month" className="form-input" value={editForm.referenceMonth} onChange={(e) => setEditForm({ ...editForm, referenceMonth: e.target.value })} />
+                                </div>
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label">Prazo</label>
+                                    <input type="date" className="form-input" value={editForm.dueDate} onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })} />
+                                </div>
                             </div>
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label className="form-label">Prazo</label>
-                                <input type="date" className="form-input" value={editForm.dueDate} onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })} />
-                            </div>
-                        </div>
-                    ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4, flexWrap: 'wrap' }}>
-                            <p style={{ margin: 0 }}>{cycle.template.name} — {formatMonthBR(dbDateToIso(new Date(cycle.referenceMonth)))}</p>
-                            <span className={`badge ${STATUS_BADGE[cycle.status] || 'badge-gray'}`}>{STATUS_LABEL[cycle.status] || cycle.status}</span>
-                            {cycle.archivedAt && <span className="badge badge-gray">Arquivado</span>}
-                            {cycle.dueDate && <span className="text-sm text-muted">Prazo: {formatDateBR(dbDateToIso(new Date(cycle.dueDate)))}</span>}
-                            {cycle.submittedAt && <span className="text-sm text-muted">Enviado: {formatDateBR(dbDateToIso(new Date(cycle.submittedAt)))}</span>}
-                        </div>
-                    )}
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                    {editing ? (
-                        <>
-                            <button className="btn btn-secondary" onClick={() => setEditing(false)} disabled={saving}><X size={16} /> Cancelar</button>
-                            <button className="btn btn-primary" onClick={handleSaveEdit} disabled={saving}><Save size={16} /> {saving ? 'Salvando...' : 'Salvar'}</button>
-                        </>
-                    ) : (
-                        <>
-                            <button className="btn btn-secondary" onClick={startEdit} disabled={busy}><Pencil size={16} /> Editar</button>
-                            <button className="btn btn-danger" onClick={handleDelete} disabled={busy}><Trash2 size={16} /> Excluir</button>
-                        </>
-                    )}
+                        ) : (
+                            <>
+                                <h1 style={{ margin: 0 }}>{cycle.client.name}</h1>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4, flexWrap: 'wrap' }}>
+                                    <p className="text-muted" style={{ margin: 0 }}>{cycle.template.name} — {formatMonthBR(dbDateToIso(new Date(cycle.referenceMonth)))}</p>
+                                    <span className={`badge ${STATUS_BADGE[cycle.status] || 'badge-gray'}`}>{STATUS_LABEL[cycle.status] || cycle.status}</span>
+                                    {cycle.archivedAt && <span className="badge badge-gray">Arquivado</span>}
+                                    {cycle.dueDate && <span className="text-sm text-muted">Prazo: {formatDateBR(dbDateToIso(new Date(cycle.dueDate)))}</span>}
+                                    {cycle.submittedAt && <span className="text-sm text-muted">Enviado: {formatDateBR(dbDateToIso(new Date(cycle.submittedAt)))}</span>}
+                                </div>
+                            </>
+                        )}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                        {editing ? (
+                            <>
+                                <button className="btn btn-secondary" onClick={() => setEditing(false)} disabled={saving}><X size={16} /> Cancelar</button>
+                                <button className="btn btn-primary" onClick={handleSaveEdit} disabled={saving}><Save size={16} /> {saving ? 'Salvando...' : 'Salvar'}</button>
+                            </>
+                        ) : (
+                            <>
+                                <button className="btn btn-secondary" onClick={startEdit} disabled={busy}><Pencil size={16} /> Editar</button>
+                                <button className="btn btn-danger" onClick={handleDelete} disabled={busy}><Trash2 size={16} /> Excluir</button>
+                            </>
+                        )}
+                    </div>
                 </div>
             </div>
 

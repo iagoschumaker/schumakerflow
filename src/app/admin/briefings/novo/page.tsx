@@ -103,15 +103,16 @@ export default function NewBriefingPage() {
         else { setCopiedText(true); setTimeout(() => setCopiedText(false), 2000); }
     };
 
-    const pageWrapperStyle: React.CSSProperties = { maxWidth: 560, margin: '0 auto' };
-
     if (result) {
         const [y, m] = referenceMonth.split('-').map(Number);
         const mesLabel = formatMonthBR(`${y}-${String(m).padStart(2, '0')}-01`);
         return (
             <div>
-                <div className="page-header"><div><h1>Briefing criado</h1><p>{result.clientName} — {mesLabel}</p></div></div>
-                <div className="page-content" style={pageWrapperStyle}>
+                <div className="page-header">
+                    <h1>Briefing criado</h1>
+                    <p>{result.clientName} — {mesLabel}</p>
+                </div>
+                <div className="page-content">
                     <div className="card">
                         <p className="text-sm text-muted" style={{ marginBottom: 'var(--space-5)' }}>Você pode ver este link de novo a qualquer momento no detalhe do ciclo, em &quot;Mostrar link&quot;.</p>
 
@@ -134,7 +135,7 @@ export default function NewBriefingPage() {
                         </div>
                     </div>
 
-                    <button className="btn btn-primary" style={{ width: '100%', marginTop: 'var(--space-4)' }} onClick={() => router.push(`/admin/briefings/${result.cycleId}`)}>
+                    <button className="btn btn-primary" style={{ marginTop: 'var(--space-4)' }} onClick={() => router.push(`/admin/briefings/${result.cycleId}`)}>
                         Ver detalhe do ciclo <ArrowRight size={16} />
                     </button>
                 </div>
@@ -144,8 +145,11 @@ export default function NewBriefingPage() {
 
     return (
         <div>
-            <div className="page-header"><div><h1>Novo briefing</h1><p>Escolha o cliente, o modelo e o mês</p></div></div>
-            <div className="page-content" style={pageWrapperStyle}>
+            <div className="page-header">
+                <h1>Novo briefing</h1>
+                <p>Escolha o cliente, o modelo e o mês</p>
+            </div>
+            <div className="page-content">
                 <form onSubmit={handleSubmit}>
                     <div className="card">
                         <div className="form-group">
@@ -168,7 +172,7 @@ export default function NewBriefingPage() {
                             <input type="date" className="form-input" value={dueDate} onChange={(e) => { setDueDate(e.target.value); setDueDateTouched(true); }} />
                         </div>
                     </div>
-                    <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: 'var(--space-4)' }} disabled={saving}>
+                    <button type="submit" className="btn btn-primary" style={{ marginTop: 'var(--space-4)' }} disabled={saving}>
                         {saving ? 'Criando...' : 'Criar briefing e gerar link'}
                     </button>
                 </form>

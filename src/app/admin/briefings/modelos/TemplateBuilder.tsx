@@ -268,31 +268,37 @@ export default function TemplateBuilder({ templateId }: { templateId?: string })
     return (
         <div>
             <div className="page-header">
-                <div>
-                    <button className="btn btn-secondary btn-sm" onClick={() => router.push('/admin/briefings/modelos')} style={{ marginBottom: 10 }}>
-                        <ArrowLeft size={14} /> Voltar
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+                    <button
+                        onClick={() => router.push('/admin/briefings/modelos')}
+                        className="btn btn-secondary"
+                        style={{ padding: '8px 12px', flexShrink: 0 }}
+                    >
+                        <ArrowLeft size={18} />
                     </button>
-                    <h1>{isNew ? 'Novo modelo' : 'Editar modelo'}</h1>
-                    <p>As seções e campos que compõem o formulário do cliente</p>
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                    {!isNew && (
-                        <button
-                            className="btn btn-danger"
-                            onClick={handleDelete}
-                            disabled={deleting || cyclesUsing > 0}
-                            title={cyclesUsing > 0 ? `${cyclesUsing} ciclo(s) usam este modelo — desative em vez de excluir` : undefined}
-                        >
-                            <Trash2 size={16} /> Excluir
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                        <h1 style={{ margin: 0 }}>{isNew ? 'Novo modelo' : 'Editar modelo'}</h1>
+                        <p className="text-muted" style={{ marginTop: 4 }}>As seções e campos que compõem o formulário do cliente</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                        {!isNew && (
+                            <button
+                                className="btn btn-danger"
+                                onClick={handleDelete}
+                                disabled={deleting || cyclesUsing > 0}
+                                title={cyclesUsing > 0 ? `${cyclesUsing} ciclo(s) usam este modelo — desative em vez de excluir` : undefined}
+                            >
+                                <Trash2 size={16} /> Excluir
+                            </button>
+                        )}
+                        <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+                            <Save size={16} /> {saving ? 'Salvando...' : 'Salvar'}
                         </button>
-                    )}
-                    <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-                        <Save size={16} /> {saving ? 'Salvando...' : 'Salvar'}
-                    </button>
+                    </div>
                 </div>
             </div>
 
-            <div className="page-content" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)', maxWidth: 880 }}>
+            <div className="page-content" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
                 <div className="card">
                     <div className="card-header"><h2 className="card-title">Informações do modelo</h2></div>
                     <div className="form-group">

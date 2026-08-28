@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LayoutTemplate, Plus, ArrowLeft } from 'lucide-react';
+import FloatingActionButton from '@/components/FloatingActionButton';
 
 interface Template {
     id: string;
@@ -33,16 +34,19 @@ export default function BriefingTemplatesPage() {
     return (
         <div>
             <div className="page-header">
-                <div>
-                    <button className="btn btn-secondary btn-sm" onClick={() => router.push('/admin/briefings')} style={{ marginBottom: 10 }}>
-                        <ArrowLeft size={14} /> Voltar
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+                    <button
+                        onClick={() => router.push('/admin/briefings')}
+                        className="btn btn-secondary"
+                        style={{ padding: '8px 12px', flexShrink: 0 }}
+                    >
+                        <ArrowLeft size={18} />
                     </button>
-                    <h1>Modelos de briefing</h1>
-                    <p>As seções e campos que compõem cada formulário</p>
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                        <h1 style={{ margin: 0 }}>Modelos de briefing</h1>
+                        <p className="text-muted" style={{ marginTop: 4 }}>As seções e campos que compõem cada formulário</p>
+                    </div>
                 </div>
-                <button className="btn btn-primary" onClick={() => router.push('/admin/briefings/modelos/novo')}>
-                    <Plus size={16} /> Novo modelo
-                </button>
             </div>
 
             <div className="page-content">
@@ -95,6 +99,10 @@ export default function BriefingTemplatesPage() {
                     )}
                 </div>
             </div>
+
+            <FloatingActionButton actions={[
+                { label: 'Novo modelo', icon: <Plus size={18} />, onClick: () => router.push('/admin/briefings/modelos/novo') },
+            ]} />
         </div>
     );
 }
