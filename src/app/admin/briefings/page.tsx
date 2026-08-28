@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ClipboardList, Plus, Send, PencilLine, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { ClipboardList, Plus, Send, PencilLine, CheckCircle2, AlertTriangle, LayoutTemplate } from 'lucide-react';
 import { formatMonthBR, formatDateBR, dbDateToIso } from '@/lib/briefings/dates';
 
 interface Cycle {
@@ -99,9 +99,14 @@ export default function BriefingsListPage() {
                     <h1>Briefings</h1>
                     <p>Colete informações dos clientes para o planejamento do mês</p>
                 </div>
-                <button className="btn btn-primary" onClick={() => router.push('/admin/briefings/novo')}>
-                    <Plus size={16} /> Novo briefing
-                </button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="btn btn-secondary" onClick={() => router.push('/admin/briefings/modelos')}>
+                        <LayoutTemplate size={16} /> Modelos
+                    </button>
+                    <button className="btn btn-primary" onClick={() => router.push('/admin/briefings/novo')}>
+                        <Plus size={16} /> Novo briefing
+                    </button>
+                </div>
             </div>
 
             <div className="page-content">
