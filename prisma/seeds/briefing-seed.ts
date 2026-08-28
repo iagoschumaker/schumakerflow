@@ -3,6 +3,15 @@
  *
  * Idempotente: usa upsert no template (by tenantId+slug),
  * e recria seções/campos apenas se o template foi criado agora.
+ * Nunca sobrescreve um template que o admin já editou pelo builder --
+ * se as seções já existem, pula.
+ *
+ * "unidades"/"unidade" viram client_list (role scope) em vez de texto
+ * livre: cada tenant precisa cadastrar uma BriefingClientList com a
+ * chave "unidades" no cliente para que o campo vire múltipla escolha
+ * (ver /admin/clients/[clientId] -- card "Listas de briefing"). Sem
+ * essa lista, o campo degrada para texto livre automaticamente -- a
+ * seed não fica bloqueada por isso.
  *
  * Uso: npx tsx prisma/seeds/briefing-seed.ts
  * Requer: DATABASE_URL no ambiente.
@@ -16,15 +25,18 @@ const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
+type FieldRole = 'period_start' | 'period_end' | 'event_date' | 'launch_date' | 'production_date' | 'scope' | 'priority' | 'needs_promotion' | 'details';
+
 interface FieldDef {
   key: string;
   label: string;
-  type: 'text' | 'textarea' | 'date' | 'month' | 'time' | 'money' | 'number' | 'select' | 'boolean' | 'email' | 'phone' | 'url';
+  type: 'text' | 'textarea' | 'date' | 'month' | 'time' | 'money' | 'number' | 'select' | 'boolean' | 'email' | 'phone' | 'url' | 'multi_select' | 'client_list';
+  role?: FieldRole;
   width?: 'half' | 'full';
   isRequired?: boolean;
   hint?: string;
   placeholder?: string;
-  options?: string[];
+  options?: string[] | { listKey: string };
 }
 
 interface SectionDef {
@@ -38,6 +50,10 @@ interface SectionDef {
 
 const TEMPLATE_SLUG = 'social-media-mensal';
 const TEMPLATE_NAME = 'Social Media — mensal';
+
+// "unidades" is the one list this template expects -- any tenant can name
+// it differently in their own template copy, this is just the seed default.
+const UNIDADES: FieldDef = { key: 'unidades', label: 'Em quais unidades', type: 'client_list', role: 'scope', width: 'half', options: { listKey: 'unidades' } };
 
 const sections: SectionDef[] = [
   {
@@ -55,8 +71,8 @@ const sections: SectionDef[] = [
     isOptional: true,
     fields: [
       { key: 'o_que_e', label: 'O que é', type: 'text', width: 'full' },
-      { key: 'a_partir_de', label: 'A partir de quando', type: 'date', width: 'half' },
-      { key: 'unidades', label: 'Em quais unidades', type: 'text', width: 'half' },
+      { key: 'a_partir_de', label: 'A partir de quando', type: 'date', role: 'launch_date', width: 'half' },
+      UNIDADES,
       { key: 'preco', label: 'Preço', type: 'money', width: 'half' },
       { key: 'divulgar_preco', label: 'Podemos divulgar o preço?', type: 'select', width: 'half', options: ['Sim', 'Não'] },
       { key: 'descricao', label: 'Como você descreveria em uma frase', type: 'text', width: 'full' },
@@ -68,12 +84,12 @@ const sections: SectionDef[] = [
     kind: 'repeater',
     repeaterItemLabel: 'Acontecimento',
     fields: [
-      { key: 'data', label: 'Data', type: 'date', width: 'half' },
+      { key: 'data', label: 'Data', type: 'date', role: 'event_date', width: 'half' },
       { key: 'tipo', label: 'Tipo', type: 'select', width: 'half', options: ['Evento', 'Feriado', 'Data da loja', 'Mudança de horário', 'Fechamento', 'Obra', 'Outro'] },
       { key: 'o_que_acontece', label: 'O que acontece', type: 'text', width: 'full' },
-      { key: 'unidades', label: 'Em quais unidades', type: 'text', width: 'half' },
-      { key: 'divulgar', label: 'Precisa divulgar?', type: 'select', width: 'half', options: ['Sim', 'Não'] },
-      { key: 'detalhes', label: 'O que o público precisa saber', type: 'textarea', width: 'full', hint: 'Horário, regra, o que muda para o cliente' },
+      UNIDADES,
+      { key: 'divulgar', label: 'Precisa divulgar?', type: 'select', role: 'needs_promotion', width: 'half', options: ['Sim', 'Não'] },
+      { key: 'detalhes', label: 'O que o público precisa saber', type: 'textarea', role: 'details', width: 'full', hint: 'Horário, regra, o que muda para o cliente' },
     ],
   },
   {
@@ -84,10 +100,10 @@ const sections: SectionDef[] = [
     isOptional: true,
     fields: [
       { key: 'nome', label: 'Nome da promoção', type: 'text', width: 'half' },
-      { key: 'unidades', label: 'Em quais unidades', type: 'text', width: 'half' },
+      UNIDADES,
       { key: 'oferta', label: 'A oferta exata, como o cliente vai ler', type: 'text', width: 'full' },
-      { key: 'inicio', label: 'Começa em', type: 'date', width: 'half' },
-      { key: 'fim', label: 'Termina em', type: 'date', width: 'half' },
+      { key: 'inicio', label: 'Começa em', type: 'date', role: 'period_start', width: 'half' },
+      { key: 'fim', label: 'Termina em', type: 'date', role: 'period_end', width: 'half' },
       { key: 'dias_horarios', label: 'Dias e horários em que vale', type: 'text', width: 'full' },
       { key: 'regras', label: 'Regras e restrições', type: 'textarea', width: 'full', hint: 'O que não estiver escrito aqui vira discussão no balcão.' },
       { key: 'preco_promocional', label: 'Preço promocional', type: 'money', width: 'half' },
@@ -98,8 +114,8 @@ const sections: SectionDef[] = [
     title: 'Captação do mês',
     kind: 'single',
     fields: [
-      { key: 'data_desejada', label: 'Data desejada', type: 'date', width: 'half' },
-      { key: 'unidade', label: 'Unidade', type: 'text', width: 'half' },
+      { key: 'data_desejada', label: 'Data desejada', type: 'date', role: 'production_date', width: 'half' },
+      { ...UNIDADES, key: 'unidade', label: 'Unidade' },
       { key: 'horario', label: 'Horário de início', type: 'time', width: 'half', hint: 'De preferência no horário mais calmo' },
       { key: 'quem_presente', label: 'Quem estará presente', type: 'text', width: 'half' },
       { key: 'gravar_especifico', label: 'Precisa gravar algo específico neste mês?', type: 'textarea', width: 'full' },
@@ -109,7 +125,7 @@ const sections: SectionDef[] = [
     title: 'Prioridade do mês',
     kind: 'single',
     fields: [
-      { key: 'prioridade', label: 'O que vocês mais querem vender ou divulgar neste mês', type: 'textarea', width: 'full', hint: 'Um ou dois itens. Se for tudo, não é prioridade nenhuma.' },
+      { key: 'prioridade', label: 'O que vocês mais querem vender ou divulgar neste mês', type: 'textarea', role: 'priority', width: 'full', isRequired: true, hint: 'Um ou dois itens. Se for tudo, não é prioridade nenhuma.' },
       { key: 'evitar', label: 'Algo que eu devo evitar neste mês', type: 'textarea', width: 'full', hint: 'Obra, produto em falta, assunto sensível, promoção que acabou' },
     ],
   },
@@ -156,7 +172,8 @@ async function seed() {
       },
     });
 
-    // Check if template already has sections (don't recreate if so)
+    // Check if template already has sections (don't recreate if so --
+    // never overwrite a template the admin may have edited by hand).
     const existingSections = await prisma.briefingTemplateSection.count({
       where: { templateId: template.id },
     });
@@ -191,6 +208,7 @@ async function seed() {
             hint: f.hint || null,
             placeholder: f.placeholder || null,
             type: f.type,
+            role: f.role || null,
             options: f.options ? f.options : undefined,
             isRequired: f.isRequired || false,
             width: f.width || 'half',

@@ -26,18 +26,35 @@ export function formatTimeBR(raw: string): string {
     return raw.replace(':', 'h');
 }
 
-// Full timestamps (not just @db.Date columns) get the same UTC-only rule as
-// the rest of this module: toLocaleString() renders using the runtime's
-// local timezone, which can differ between the Node server (SSR) and the
-// browser (hydration), producing a different string in each.
-export function formatDateTimeBR(iso: string): string {
-    const d = new Date(iso);
-    const day = String(d.getUTCDate()).padStart(2, '0');
-    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
-    const year = d.getUTCFullYear();
-    const hours = String(d.getUTCHours()).padStart(2, '0');
-    const minutes = String(d.getUTCMinutes()).padStart(2, '0');
-    return `${day}/${month}/${year} ${hours}:${minutes}`;
+// Two different rules for two different kinds of value in this module:
+//
+// - Pure dates (@db.Date columns, and DATE-type answers): NEVER convert.
+//   "2026-09-05" means the 5th everywhere in the world -- parse the string
+//   manually, as formatDateBR/dbDateToIso already do above.
+//
+// - Instants (submittedAt, createdAt, lastOpenedAt, event timestamps):
+//   stored correctly in UTC, but MUST convert to the app's display timezone
+//   when shown -- a raw UTC hour is not what a human reading it expects.
+//   The previous version of this function used getUTC* getters, which was
+//   right for the pure-date rule but wrong here: it left instants in UTC
+//   instead of converting them, which is the actual bug this fixes.
+const TZ = process.env.APP_TIMEZONE || 'America/Sao_Paulo';
+
+function weekdayShort(long: string): string {
+    // Intl gives "quinta-feira" for pt-BR; segunda..sexta drop the
+    // "-feira" suffix in casual use, sábado/domingo don't have one to drop.
+    return long.replace('-feira', '');
+}
+
+export function formatDateTimeBR(input: Date | string): string {
+    const date = typeof input === 'string' ? new Date(input) : input;
+    const parts = new Intl.DateTimeFormat('pt-BR', {
+        timeZone: TZ,
+        day: '2-digit', month: '2-digit', year: 'numeric', weekday: 'long',
+        hour: '2-digit', minute: '2-digit', hour12: false,
+    }).formatToParts(date);
+    const get = (type: string) => parts.find((p) => p.type === type)?.value || '';
+    return `${get('day')}/${get('month')}/${get('year')} (${weekdayShort(get('weekday'))}) às ${get('hour')}h${get('minute')}`;
 }
 
 // referenceMonth/dueDate come back from Prisma as Date objects for @db.Date columns.

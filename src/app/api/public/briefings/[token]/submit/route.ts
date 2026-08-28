@@ -90,16 +90,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
         return NextResponse.json({ missing }, { status: 422 });
     }
 
+    // Revoked, but NOT archived here -- the admin needs this cycle in the
+    // active list right after submission, to read it while planning the
+    // month. Archival happens later (see archiveStaleSubmitted in the admin
+    // route): when the reference month ends, or when a new cycle is created
+    // for the same client+template.
     await prisma.$transaction([
         prisma.briefingCycle.update({
             where: { id: link.cycleId },
-            data: { status: 'submitted', submittedAt: new Date(), archivedAt: new Date() },
+            data: { status: 'submitted', submittedAt: new Date() },
         }),
         prisma.briefingLink.updateMany({
             where: { cycleId: link.cycleId, revokedAt: null },
             data: { revokedAt: new Date() },
         }),
-        prisma.briefingEvent.create({ data: { cycleId: link.cycleId, type: 'archived', meta: { reason: 'auto_on_submit' } } }),
     ]);
     await notifyBriefingSubmitted(link.cycleId);
 

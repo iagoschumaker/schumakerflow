@@ -106,6 +106,8 @@ export default function BriefingDetailPage() {
         ? activeLink.revokedAt ? 'revogado' : new Date(activeLink.expiresAt) < new Date() ? 'expirado' : 'ativo'
         : null;
     const linkStatusColor = linkStatus === 'ativo' ? 'var(--color-success)' : linkStatus === 'expirado' ? 'var(--color-warning)' : 'var(--color-danger)';
+    const linkActionsLocked = cycle ? (cycle.status === 'submitted' || !!cycle.archivedAt) : false;
+    const linkActionsLockedReason = 'Reabra o briefing para gerar um link novo.';
 
     const runAction = async (action: string, extra?: Record<string, unknown>) => {
         setBusy(true);
@@ -147,9 +149,10 @@ export default function BriefingDetailPage() {
     };
 
     const handleReopen = async () => {
-        const ok = await showConfirm({ title: 'Reabrir briefing', message: 'O ciclo volta a aceitar edição do cliente. Confirma?' });
+        const ok = await showConfirm({ title: 'Reabrir briefing', message: 'O ciclo volta a aceitar edição do cliente e um link novo é gerado. Confirma?' });
         if (!ok) return;
-        await runAction('reopen');
+        const data = await runAction('reopen');
+        if (data?.token) setShownToken(data.token);
         load();
     };
 
@@ -295,7 +298,7 @@ export default function BriefingDetailPage() {
                                     <span className={`badge ${STATUS_BADGE[cycle.status] || 'badge-gray'}`}>{STATUS_LABEL[cycle.status] || cycle.status}</span>
                                     {cycle.archivedAt && <span className="badge badge-gray">Arquivado</span>}
                                     {cycle.dueDate && <span className="text-sm text-muted">Prazo: {formatDateBR(dbDateToIso(new Date(cycle.dueDate)))}</span>}
-                                    {cycle.submittedAt && <span className="text-sm text-muted">Enviado: {formatDateBR(dbDateToIso(new Date(cycle.submittedAt)))}</span>}
+                                    {cycle.submittedAt && <span className="text-sm text-muted">Enviado: {formatDateTimeBR(cycle.submittedAt)}</span>}
                                 </div>
                             </>
                         )}
@@ -327,11 +330,21 @@ export default function BriefingDetailPage() {
                                     <Eye size={14} /> Mostrar link
                                 </button>
                             )}
-                            <button className="btn btn-secondary btn-sm" onClick={handleRegenerate} disabled={busy}>
+                            <button
+                                className="btn btn-secondary btn-sm"
+                                onClick={handleRegenerate}
+                                disabled={busy || linkActionsLocked}
+                                title={linkActionsLocked ? linkActionsLockedReason : undefined}
+                            >
                                 <RefreshCw size={14} /> Gerar novo
                             </button>
                             {activeLink && !activeLink.revokedAt && (
-                                <button className="btn btn-secondary btn-sm" onClick={handleRevoke} disabled={busy}>
+                                <button
+                                    className="btn btn-secondary btn-sm"
+                                    onClick={handleRevoke}
+                                    disabled={busy || linkActionsLocked}
+                                    title={linkActionsLocked ? linkActionsLockedReason : undefined}
+                                >
                                     <Ban size={14} /> Revogar
                                 </button>
                             )}
@@ -353,7 +366,7 @@ export default function BriefingDetailPage() {
                             <InfoItem label="Status do link" value={<span style={{ color: linkStatusColor }}>{linkStatus}</span>} />
                             <InfoItem label="Expira em" value={formatDateBR(dbDateToIso(new Date(activeLink.expiresAt)))} />
                             <InfoItem label="Aberturas" value={activeLink.opensCount} />
-                            <InfoItem label="Última abertura" value={activeLink.lastOpenedAt ? formatDateBR(dbDateToIso(new Date(activeLink.lastOpenedAt))) : '—'} />
+                            <InfoItem label="Última abertura" value={activeLink.lastOpenedAt ? formatDateTimeBR(activeLink.lastOpenedAt) : '—'} />
                             <InfoItem label="Token" value={`······${activeLink.tokenPreview}`} />
                         </div>
                     ) : (

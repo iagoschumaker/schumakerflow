@@ -49,6 +49,34 @@ function monthStartUtc(yyyyMm: string): Date {
     return new Date(Date.UTC(y, m - 1, 1));
 }
 
+async function archiveCycles(ids: string[], reason: string): Promise<void> {
+    if (ids.length === 0) return;
+    await prisma.$transaction([
+        prisma.briefingCycle.updateMany({ where: { id: { in: ids } }, data: { archivedAt: new Date() } }),
+        prisma.briefingEvent.createMany({ data: ids.map((id) => ({ cycleId: id, type: 'archived', meta: { reason } })) }),
+    ]);
+}
+
+// Not archived at submit time anymore (the admin needs it in the active
+// list right after the client answers). It archives itself later, lazily,
+// the next time this tenant's list/detail is loaded, once either trigger
+// has actually happened -- no cron needed.
+async function archiveStaleSubmitted(tenantId: string): Promise<void> {
+    const now = new Date();
+    const candidates = await prisma.briefingCycle.findMany({
+        where: { tenantId, status: 'submitted', archivedAt: null },
+        select: { id: true, referenceMonth: true },
+    });
+    const staleIds = candidates
+        .filter((c) => {
+            const rm = c.referenceMonth;
+            const nextMonthStart = new Date(Date.UTC(rm.getUTCFullYear(), rm.getUTCMonth() + 1, 1));
+            return now >= nextMonthStart;
+        })
+        .map((c) => c.id);
+    await archiveCycles(staleIds, 'reference_month_ended');
+}
+
 export const POST = withAuth(
     async (req: NextRequest, ctx: ApiContext) => {
         if (!isBriefingsEnabled()) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -58,6 +86,8 @@ export const POST = withAuth(
         if (body.action === 'list') {
             const parsed = listSchema.safeParse(body);
             if (!parsed.success) return apiError('Invalid input', 400);
+
+            await archiveStaleSubmitted(ctx.tenantId);
 
             const pageSize = 20;
             const page = parsed.data.page || 1;
@@ -93,6 +123,8 @@ export const POST = withAuth(
             const parsed = getSchema.safeParse(body);
             if (!parsed.success) return apiError('Invalid input', 400);
 
+            await archiveStaleSubmitted(ctx.tenantId);
+
             const cycle = await prisma.briefingCycle.findFirst({
                 where: { id: parsed.data.id, tenantId: ctx.tenantId },
                 include: {
@@ -126,6 +158,15 @@ export const POST = withAuth(
 
             const referenceMonth = monthStartUtc(parsed.data.referenceMonth);
             const dueDate = parsed.data.dueDate ? new Date(`${parsed.data.dueDate}T00:00:00.000Z`) : null;
+
+            // A new cycle for this client+template supersedes any earlier
+            // submitted-but-not-yet-archived one -- no need to wait for the
+            // reference month to end.
+            const superseded = await prisma.briefingCycle.findMany({
+                where: { tenantId: ctx.tenantId, clientId: parsed.data.clientId, templateId: parsed.data.templateId, status: 'submitted', archivedAt: null },
+                select: { id: true },
+            });
+            await archiveCycles(superseded.map((c) => c.id), 'superseded_by_new_cycle');
 
             const { token, tokenEnc, tokenLookup, preview } = generateToken();
             const expiresAt = dueDate
@@ -221,6 +262,9 @@ export const POST = withAuth(
 
             const cycle = await prisma.briefingCycle.findFirst({ where: { id: parsed.data.id, tenantId: ctx.tenantId } });
             if (!cycle) return apiError('Cycle not found', 404);
+            if (cycle.status === 'submitted' || cycle.archivedAt) {
+                return apiError('Reabra o briefing para gerar um link novo.', 409);
+            }
 
             const { token, tokenEnc, tokenLookup, preview } = generateToken();
             const expiresAt = cycle.dueDate
@@ -266,6 +310,9 @@ export const POST = withAuth(
 
             const cycle = await prisma.briefingCycle.findFirst({ where: { id: parsed.data.id, tenantId: ctx.tenantId } });
             if (!cycle) return apiError('Cycle not found', 404);
+            if (cycle.status === 'submitted' || cycle.archivedAt) {
+                return apiError('Reabra o briefing para gerar um link novo.', 409);
+            }
 
             await prisma.$transaction([
                 prisma.briefingLink.updateMany({
@@ -286,12 +333,27 @@ export const POST = withAuth(
             if (!cycle) return apiError('Cycle not found', 404);
             if (cycle.status !== 'submitted') return apiError('Only submitted cycles can be reopened', 409);
 
+            // One action, not a manual sequence: un-submit, unarchive, and hand
+            // back a fresh link in a single transaction. submittedAt is left
+            // untouched on purpose -- it stays as history of the first submission.
+            const { token, tokenEnc, tokenLookup, preview } = generateToken();
+            const expiresAt = cycle.dueDate
+                ? new Date(cycle.dueDate.getTime() + 15 * 24 * 60 * 60 * 1000)
+                : new Date(Date.now() + 45 * 24 * 60 * 60 * 1000);
+
             await prisma.$transaction([
                 prisma.briefingCycle.update({ where: { id: cycle.id }, data: { status: 'in_progress', archivedAt: null } }),
+                prisma.briefingLink.updateMany({
+                    where: { cycleId: cycle.id, revokedAt: null },
+                    data: { revokedAt: new Date() },
+                }),
+                prisma.briefingLink.create({
+                    data: { cycleId: cycle.id, tokenEnc, tokenLookup, tokenPreview: preview, expiresAt },
+                }),
                 prisma.briefingEvent.create({ data: { cycleId: cycle.id, type: 'reopened' } }),
             ]);
 
-            return apiSuccess({ ok: true });
+            return apiSuccess({ token });
         }
 
         if (body.action === 'archive') {
@@ -354,7 +416,7 @@ export const POST = withAuth(
                     repeaterItemLabel: s.repeaterItemLabel,
                     emptyLabel: s.emptyLabel,
                     isOptional: s.isOptional,
-                    fields: s.fields.map((f) => ({ id: f.id, key: f.key, label: f.label, type: f.type, isRequired: f.isRequired, isActive: f.isActive })),
+                    fields: s.fields.map((f) => ({ id: f.id, key: f.key, label: f.label, type: f.type, role: f.role, isRequired: f.isRequired, isActive: f.isActive })),
                 })),
                 answers: cycle.answers.map((a) => ({ fieldId: a.fieldId, groupIndex: a.groupIndex, value: a.value })),
             });

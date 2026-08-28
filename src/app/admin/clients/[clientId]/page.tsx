@@ -7,6 +7,7 @@ import {
     ArrowLeft, Pencil, Trash2, Users, Mail, Phone, Calendar,
     FolderKanban, FileText, Shield, Loader2, X, UserPlus, Save, Link, UserMinus
 } from 'lucide-react';
+import BriefingListsCard from '../BriefingListsCard';
 
 interface ClientDetail {
     id: string;
@@ -339,6 +340,10 @@ export default function ClientDetailPage() {
                                     </div>
                                 )}
                             </div>
+                        )}
+
+                        {!isNew && process.env.NEXT_PUBLIC_BRIEFINGS_ENABLED === 'true' && (
+                            <BriefingListsCard clientId={clientId} />
                         )}
                     </div>
 

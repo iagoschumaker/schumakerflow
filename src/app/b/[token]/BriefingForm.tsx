@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Trash2, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
 import styles from './briefing-public.module.css';
 
-type FieldType = 'text' | 'textarea' | 'date' | 'month' | 'time' | 'money' | 'number' | 'select' | 'boolean' | 'email' | 'phone' | 'url';
+type FieldType = 'text' | 'textarea' | 'date' | 'month' | 'time' | 'money' | 'number' | 'select' | 'boolean' | 'email' | 'phone' | 'url' | 'multi_select' | 'client_list';
 
 interface Field {
     id: string;
@@ -13,7 +13,7 @@ interface Field {
     hint: string | null;
     placeholder: string | null;
     type: FieldType;
-    options: string[] | null;
+    options: string[] | { listKey: string } | null;
     isRequired: boolean;
     width: 'half' | 'full';
 }
@@ -43,6 +43,7 @@ interface Props {
     primaryColor: string | null;
     referenceMonthLabel: string;
     dueDateLabel: string | null;
+    clientLists: Record<string, string[]>;
     sections: Section[];
     initialAnswers: AnswerIn[];
 }
@@ -53,7 +54,7 @@ function answerKey(fieldId: string, groupIndex: number) {
     return `${fieldId}:${groupIndex}`;
 }
 
-export default function BriefingForm({ token, clientName, tenantName, tenantLogoUrl, primaryColor, referenceMonthLabel, dueDateLabel, sections, initialAnswers }: Props) {
+export default function BriefingForm({ token, clientName, tenantName, tenantLogoUrl, primaryColor, referenceMonthLabel, dueDateLabel, clientLists, sections, initialAnswers }: Props) {
     const [values, setValues] = useState<Map<string, unknown>>(() => {
         const m = new Map<string, unknown>();
         for (const a of initialAnswers) m.set(answerKey(a.fieldId, a.groupIndex), a.value?.raw ?? '');
@@ -156,7 +157,7 @@ export default function BriefingForm({ token, clientName, tenantName, tenantLogo
     const filledCount = useMemo(() => {
         let n = 0;
         values.forEach((v) => {
-            if (v !== null && v !== undefined && v !== '') n++;
+            if (Array.isArray(v) ? v.length > 0 : (v !== null && v !== undefined && v !== '')) n++;
         });
         return n;
     }, [values]);
@@ -246,6 +247,7 @@ export default function BriefingForm({ token, clientName, tenantName, tenantLogo
                         onAddGroup={() => addGroup(section.id)}
                         onRemoveGroup={(gi) => removeGroup(section.id, gi)}
                         missingFieldIds={new Set(missing.filter((m) => section.fields.some((f) => f.id === m.fieldId)).map((m) => m.fieldId))}
+                        clientLists={clientLists}
                     />
                 ))}
 
@@ -288,15 +290,24 @@ export default function BriefingForm({ token, clientName, tenantName, tenantLogo
     );
 }
 
+// Client-only (never SSR'd, so no hydration-mismatch risk), but still uses
+// the app's configured timezone rather than the visitor's browser guess --
+// otherwise the time shown here could disagree with the same instant
+// displayed later in the admin's Histórico (which uses APP_TIMEZONE).
+const APP_TZ = process.env.NEXT_PUBLIC_APP_TIMEZONE || 'America/Sao_Paulo';
+function formatTimeTZ(d: Date): string {
+    return new Intl.DateTimeFormat('pt-BR', { timeZone: APP_TZ, hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
+}
+
 function SaveIndicator({ status, savedAt }: { status: SaveStatus; savedAt: Date | null }) {
     if (status === 'saving') return <span className={`${styles.saveIndicator} ${styles.saveIndicatorSaving}`}>salvando…</span>;
     if (status === 'error') return <span className={`${styles.saveIndicator} ${styles.saveIndicatorError}`}>falha ao salvar, tentando de novo</span>;
-    if (status === 'saved' && savedAt) return <span className={`${styles.saveIndicator} ${styles.saveIndicatorSaved}`}>salvo às {savedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>;
+    if (status === 'saved' && savedAt) return <span className={`${styles.saveIndicator} ${styles.saveIndicatorSaved}`}>salvo às {formatTimeTZ(savedAt)}</span>;
     return <span className={styles.saveIndicator}>&nbsp;</span>;
 }
 
 function SectionBlock({
-    section, groupIndices, values, onChange, onAddGroup, onRemoveGroup, missingFieldIds,
+    section, groupIndices, values, onChange, onAddGroup, onRemoveGroup, missingFieldIds, clientLists,
 }: {
     section: Section;
     groupIndices: number[];
@@ -305,6 +316,7 @@ function SectionBlock({
     onAddGroup: () => void;
     onRemoveGroup: (groupIndex: number) => void;
     missingFieldIds: Set<string>;
+    clientLists: Record<string, string[]>;
 }) {
     return (
         <div className={styles.sectionCard}>
@@ -315,7 +327,7 @@ function SectionBlock({
             {section.description && <p className={styles.sectionDescription}>{section.description}</p>}
 
             {section.kind === 'single' && (
-                <FieldGrid section={section} groupIndex={0} values={values} onChange={onChange} missingFieldIds={missingFieldIds} />
+                <FieldGrid section={section} groupIndex={0} values={values} onChange={onChange} missingFieldIds={missingFieldIds} clientLists={clientLists} />
             )}
 
             {section.kind === 'repeater' && (
@@ -328,7 +340,7 @@ function SectionBlock({
                                     <Trash2 size={16} />
                                 </button>
                             </div>
-                            <FieldGrid section={section} groupIndex={gi} values={values} onChange={onChange} missingFieldIds={missingFieldIds} />
+                            <FieldGrid section={section} groupIndex={gi} values={values} onChange={onChange} missingFieldIds={missingFieldIds} clientLists={clientLists} />
                         </div>
                     ))}
 
@@ -351,13 +363,14 @@ function SectionBlock({
 }
 
 function FieldGrid({
-    section, groupIndex, values, onChange, missingFieldIds,
+    section, groupIndex, values, onChange, missingFieldIds, clientLists,
 }: {
     section: Section;
     groupIndex: number;
     values: Map<string, unknown>;
     onChange: (fieldId: string, groupIndex: number, raw: unknown) => void;
     missingFieldIds: Set<string>;
+    clientLists: Record<string, string[]>;
 }) {
     return (
         <div className={styles.fieldGrid}>
@@ -369,8 +382,9 @@ function FieldGrid({
                     {field.hint && <p className={styles.fieldHint}>{field.hint}</p>}
                     <FieldInput
                         field={field}
-                        value={values.get(answerKey(field.id, groupIndex)) ?? ''}
+                        value={values.get(answerKey(field.id, groupIndex)) ?? (field.type === 'multi_select' || field.type === 'client_list' ? [] : '')}
                         onChange={(raw) => onChange(field.id, groupIndex, raw)}
+                        clientLists={clientLists}
                     />
                     {missingFieldIds.has(field.id) && <p className={styles.fieldError}>Obrigatório</p>}
                 </div>
@@ -394,11 +408,40 @@ function openPicker(e: React.SyntheticEvent<HTMLInputElement>) {
     e.currentTarget.showPicker?.();
 }
 
-function FieldInput({ field, value, onChange }: { field: Field; value: unknown; onChange: (raw: unknown) => void }) {
+function CheckboxGroup({ options, value, onChange }: { options: string[]; value: unknown; onChange: (raw: string[]) => void }) {
+    const selected = Array.isArray(value) ? (value as string[]) : [];
+    const toggle = (opt: string) => {
+        onChange(selected.includes(opt) ? selected.filter((o) => o !== opt) : [...selected, opt]);
+    };
+    return (
+        <div className={styles.checkboxGroup}>
+            {options.map((opt) => (
+                <label key={opt} className={styles.checkboxOption}>
+                    <input type="checkbox" checked={selected.includes(opt)} onChange={() => toggle(opt)} />
+                    {opt}
+                </label>
+            ))}
+        </div>
+    );
+}
+
+function FieldInput({ field, value, onChange, clientLists }: { field: Field; value: unknown; onChange: (raw: unknown) => void; clientLists: Record<string, string[]> }) {
     const strValue = typeof value === 'string' ? value : value === null || value === undefined ? '' : String(value);
     const placeholder = field.placeholder || DEFAULT_PLACEHOLDER[field.type];
 
     switch (field.type) {
+        case 'multi_select':
+            return <CheckboxGroup options={(field.options as string[] | null) || []} value={value} onChange={onChange} />;
+        case 'client_list': {
+            const listKey = (field.options as { listKey?: string } | null)?.listKey;
+            const items = listKey ? clientLists[listKey] : undefined;
+            // Degrades to free text when the client has no list under this
+            // key -- the admin gets a note in Histórico, the form never breaks.
+            if (!items) {
+                return <input type="text" className={styles.input} placeholder={placeholder || 'Digite aqui'} value={strValue} onChange={(e) => onChange(e.target.value)} />;
+            }
+            return <CheckboxGroup options={items} value={value} onChange={onChange} />;
+        }
         case 'textarea':
             return <textarea className={styles.textarea} placeholder={placeholder} value={strValue} onChange={(e) => onChange(e.target.value)} />;
         case 'date':
@@ -427,7 +470,7 @@ function FieldInput({ field, value, onChange }: { field: Field; value: unknown; 
             return (
                 <select className={styles.select} value={strValue} onChange={(e) => onChange(e.target.value)}>
                     <option value="">Selecione</option>
-                    {(field.options || []).map((opt) => (
+                    {((field.options as string[] | null) || []).map((opt) => (
                         <option key={opt} value={opt}>{opt}</option>
                     ))}
                 </select>

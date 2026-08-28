@@ -27,6 +27,9 @@ export function isValidFieldValue(type: BriefingTemplateFieldType, raw: unknown)
             return typeof raw === 'number' || (typeof raw === 'string' && raw.trim() !== '' && !Number.isNaN(Number(raw)));
         case 'select':
             return typeof raw === 'string';
+        case 'multi_select':
+        case 'client_list':
+            return Array.isArray(raw) && raw.every((v) => typeof v === 'string');
         case 'boolean':
             return typeof raw === 'boolean' || raw === 'true' || raw === 'false';
         case 'email':
@@ -48,6 +51,7 @@ export function hasValue(value: unknown): boolean {
     if (value === null || value === undefined) return false;
     if (typeof value === 'object' && value !== null && 'raw' in value) {
         const raw = (value as { raw: unknown }).raw;
+        if (Array.isArray(raw)) return raw.length > 0;
         return raw !== null && raw !== undefined && raw !== '';
     }
     return true;

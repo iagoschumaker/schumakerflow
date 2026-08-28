@@ -5,12 +5,28 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Save, X, Lock } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 
-type FieldType = 'text' | 'textarea' | 'date' | 'month' | 'time' | 'money' | 'number' | 'select' | 'boolean' | 'email' | 'phone' | 'url';
+type FieldType = 'text' | 'textarea' | 'date' | 'month' | 'time' | 'money' | 'number' | 'select' | 'boolean' | 'email' | 'phone' | 'url' | 'multi_select' | 'client_list';
 
 const FIELD_TYPE_LABEL: Record<FieldType, string> = {
     text: 'Texto curto', textarea: 'Texto longo', date: 'Data', month: 'Mês', time: 'Horário',
-    money: 'Dinheiro', number: 'Número', select: 'Lista de opções', boolean: 'Sim / Não',
+    money: 'Dinheiro', number: 'Número', select: 'Lista de opções (uma escolha)', boolean: 'Sim / Não',
     email: 'E-mail', phone: 'Telefone', url: 'Link',
+    multi_select: 'Lista de opções (múltipla escolha)', client_list: 'Lista do cliente (múltipla escolha)',
+};
+
+type FieldRole = '' | 'period_start' | 'period_end' | 'event_date' | 'launch_date' | 'production_date' | 'scope' | 'priority' | 'needs_promotion' | 'details';
+
+const FIELD_ROLE_LABEL: Record<FieldRole, string> = {
+    '': 'Nenhum',
+    period_start: 'Início de período',
+    period_end: 'Fim de período',
+    event_date: 'Data de acontecimento',
+    launch_date: 'Data de lançamento',
+    production_date: 'Data de produção',
+    scope: 'Escopo (a quais entidades se aplica)',
+    priority: 'Prioridade do mês',
+    needs_promotion: 'Precisa ser divulgado?',
+    details: 'Detalhamento',
 };
 
 interface FieldDraft {
@@ -19,12 +35,14 @@ interface FieldDraft {
     key: string;
     label: string;
     type: FieldType;
+    role: FieldRole;
     width: 'half' | 'full';
     isRequired: boolean;
     isActive: boolean;
     hint: string;
     placeholder: string;
-    options: string[];
+    options: string[]; // used by select/multi_select
+    listKey: string; // used by client_list
     answerCount: number;
 }
 
@@ -56,8 +74,8 @@ function slugifyKey(label: string): string {
 
 function blankField(): FieldDraft {
     return {
-        _localId: newLocalId(), key: '', label: '', type: 'text', width: 'half',
-        isRequired: false, isActive: true, hint: '', placeholder: '', options: [], answerCount: 0,
+        _localId: newLocalId(), key: '', label: '', type: 'text', role: '', width: 'half',
+        isRequired: false, isActive: true, hint: '', placeholder: '', options: [], listKey: '', answerCount: 0,
     };
 }
 
@@ -91,9 +109,9 @@ interface TemplateData {
         emptyLabel: string | null;
         isOptional: boolean;
         fields: {
-            id: string; key: string; label: string; type: FieldType; width: 'half' | 'full';
+            id: string; key: string; label: string; type: FieldType; role: FieldRole | null; width: 'half' | 'full';
             isRequired: boolean; isActive: boolean; hint: string | null; placeholder: string | null;
-            options: string[] | null; _count: { answers: number };
+            options: string[] | { listKey: string } | null; _count: { answers: number };
         }[];
     }[];
 }
@@ -145,12 +163,14 @@ export default function TemplateBuilder({ templateId }: { templateId?: string })
                 key: f.key,
                 label: f.label,
                 type: f.type,
+                role: f.role || '',
                 width: f.width,
                 isRequired: f.isRequired,
                 isActive: f.isActive,
                 hint: f.hint || '',
                 placeholder: f.placeholder || '',
-                options: f.options || [],
+                options: Array.isArray(f.options) ? f.options : [],
+                listKey: (f.options && !Array.isArray(f.options) ? f.options.listKey : '') || '',
                 answerCount: f._count.answers,
             })),
         })));
@@ -209,12 +229,17 @@ export default function TemplateBuilder({ templateId }: { templateId?: string })
                         key: f.key.trim() || slugifyKey(f.label),
                         label: f.label.trim(),
                         type: f.type,
+                        role: f.role || undefined,
                         width: f.width,
                         isRequired: f.isRequired,
                         isActive: f.isActive,
                         hint: f.hint.trim() || undefined,
                         placeholder: f.placeholder.trim() || undefined,
-                        options: f.type === 'select' ? f.options.map((o) => o.trim()).filter(Boolean) : undefined,
+                        options: f.type === 'select' || f.type === 'multi_select'
+                            ? f.options.map((o) => o.trim()).filter(Boolean)
+                            : f.type === 'client_list'
+                                ? { listKey: f.listKey.trim() || slugifyKey(f.label) }
+                                : undefined,
                     })),
                 })),
             };
@@ -482,9 +507,17 @@ function FieldEditor({
                     <label className="form-label">Dica (opcional)</label>
                     <input className="form-input" value={field.hint} onChange={(e) => onChange({ hint: e.target.value })} placeholder="Texto de ajuda abaixo da pergunta" />
                 </div>
+                <div className="form-group" style={{ marginBottom: 0, flex: '1 1 220px' }}>
+                    <label className="form-label">Papel (para conferência automática)</label>
+                    <select className="form-input" value={field.role} onChange={(e) => onChange({ role: e.target.value as FieldRole })}>
+                        {(Object.keys(FIELD_ROLE_LABEL) as FieldRole[]).map((r) => (
+                            <option key={r} value={r}>{FIELD_ROLE_LABEL[r]}</option>
+                        ))}
+                    </select>
+                </div>
             </div>
 
-            {field.type === 'select' && (
+            {(field.type === 'select' || field.type === 'multi_select') && (
                 <div style={{ marginTop: 'var(--space-3)' }}>
                     <label className="form-label">Opções</label>
                     {field.options.map((opt, oi) => (
@@ -494,6 +527,16 @@ function FieldEditor({
                         </div>
                     ))}
                     <button type="button" className="btn btn-secondary btn-sm" onClick={addOption}><Plus size={14} /> Adicionar opção</button>
+                </div>
+            )}
+
+            {field.type === 'client_list' && (
+                <div className="form-group" style={{ marginTop: 'var(--space-3)', marginBottom: 0, maxWidth: 320 }}>
+                    <label className="form-label">Chave da lista do cliente</label>
+                    <input className="form-input" value={field.listKey} onChange={(e) => onChange({ listKey: e.target.value })} placeholder={field.label ? slugifyKey(field.label) : 'ex: unidades'} />
+                    <span className="text-xs text-muted" style={{ marginTop: 4, display: 'block' }}>
+                        Precisa bater com a chave da lista cadastrada no cliente. Se o cliente não tiver essa lista, o campo vira texto livre e você recebe um aviso no histórico do ciclo.
+                    </span>
                 </div>
             )}
 

@@ -17,20 +17,26 @@ const getSchema = z.object({
 
 const idSchema = z.object({ id: z.string().uuid() });
 
-const fieldTypeEnum = z.enum(['text', 'textarea', 'date', 'month', 'time', 'money', 'number', 'select', 'boolean', 'email', 'phone', 'url']);
+const fieldTypeEnum = z.enum(['text', 'textarea', 'date', 'month', 'time', 'money', 'number', 'select', 'boolean', 'email', 'phone', 'url', 'multi_select', 'client_list']);
 const widthEnum = z.enum(['half', 'full']);
+const fieldRoleEnum = z.enum(['period_start', 'period_end', 'event_date', 'launch_date', 'production_date', 'scope', 'priority', 'needs_promotion', 'details']);
 
 const fieldDraftSchema = z.object({
     id: z.string().uuid().optional(),
     key: z.string().regex(/^[a-z0-9_]+$/, 'A chave só pode ter letras minúsculas, números e underscore.').optional(),
     label: z.string().min(1),
     type: fieldTypeEnum,
+    role: fieldRoleEnum.optional().nullable(),
     width: widthEnum,
     isRequired: z.boolean(),
     isActive: z.boolean(),
     hint: z.string().optional().nullable(),
     placeholder: z.string().optional().nullable(),
-    options: z.array(z.string().min(1)).optional().nullable(),
+    // select/multi_select: string[] of choices. client_list: { listKey } pointing at a BriefingClientList.
+    options: z.union([
+        z.array(z.string().min(1)),
+        z.object({ listKey: z.string().min(1) }),
+    ]).optional().nullable(),
 });
 
 const sectionDraftSchema = z.object({
@@ -87,6 +93,20 @@ function slugifyKey(input: string): string {
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '_')
         .replace(/(^_|_$)/g, '') || 'campo';
+}
+
+type FieldDraft = z.infer<typeof fieldDraftSchema>;
+
+// select/multi_select store their choice list as options; client_list stores
+// { listKey } instead -- never mix the two up when persisting.
+function fieldOptionsValue(f: FieldDraft): string[] | { listKey: string } | undefined {
+    if (f.type === 'select' || f.type === 'multi_select') {
+        return Array.isArray(f.options) && f.options.length > 0 ? f.options : undefined;
+    }
+    if (f.type === 'client_list' && f.options && !Array.isArray(f.options)) {
+        return f.options;
+    }
+    return undefined;
 }
 
 function uniqueFieldKeys<T extends { key?: string; label: string }>(fields: T[]): (T & { key: string })[] {
@@ -174,12 +194,13 @@ export const POST = withAuth(
                                     key: f.key,
                                     label: f.label,
                                     type: f.type,
+                                    role: f.role || null,
                                     width: f.width,
                                     isRequired: f.isRequired,
                                     isActive: f.isActive,
                                     hint: f.hint || null,
                                     placeholder: f.placeholder || null,
-                                    options: f.type === 'select' && f.options && f.options.length > 0 ? f.options : undefined,
+                                    options: fieldOptionsValue(f),
                                     sortOrder: fi,
                                 })),
                             },
@@ -257,12 +278,13 @@ export const POST = withAuth(
                                 key: f.key,
                                 label: f.label,
                                 type: f.type,
+                                role: f.role || null,
                                 width: f.width,
                                 isRequired: f.isRequired,
                                 isActive: f.isActive,
                                 hint: f.hint || null,
                                 placeholder: f.placeholder || null,
-                                options: f.type === 'select' && f.options && f.options.length > 0 ? f.options : Prisma.JsonNull,
+                                options: fieldOptionsValue(f) ?? Prisma.JsonNull,
                                 sortOrder: fi,
                             };
                             if (f.id) {

@@ -53,7 +53,7 @@ export default async function BriefingPublicPage({ params }: { params: Promise<{
         include: {
             cycle: {
                 include: {
-                    client: { select: { name: true } },
+                    client: { select: { name: true, briefingClientLists: { select: { key: true, items: true } } } },
                     tenant: { select: { name: true, logoUrl: true, primaryColor: true } },
                     template: {
                         include: {
@@ -121,6 +121,38 @@ export default async function BriefingPublicPage({ params }: { params: Promise<{
         value: a.value as { raw: unknown },
     }));
 
+    const clientListsByKey = new Map(cycle.client.briefingClientLists.map((l) => [l.key, l.items as string[]]));
+
+    // CLIENT_LIST fields degrade to free text when the client has no list
+    // under that key -- never break the form over missing configuration.
+    // The admin gets a discreet note in the cycle's own event history
+    // instead (deduped so repeat visits don't spam it).
+    const missingListFields = cycle.template.sections
+        .flatMap((s) => s.fields)
+        .filter((f) => {
+            if (f.type !== 'client_list') return false;
+            const listKey = (f.options as { listKey?: string } | null)?.listKey;
+            return !!listKey && !clientListsByKey.has(listKey);
+        });
+
+    if (missingListFields.length > 0) {
+        const alreadyFlagged = await prisma.briefingEvent.findMany({
+            where: { cycleId: cycle.id, type: 'client_list_missing' },
+            select: { meta: true },
+        });
+        const flaggedFieldIds = new Set(alreadyFlagged.map((e) => (e.meta as { fieldId?: string } | null)?.fieldId).filter(Boolean));
+        const toFlag = missingListFields.filter((f) => !flaggedFieldIds.has(f.id));
+        if (toFlag.length > 0) {
+            await prisma.briefingEvent.createMany({
+                data: toFlag.map((f) => ({
+                    cycleId: cycle.id,
+                    type: 'client_list_missing',
+                    meta: { fieldId: f.id, fieldLabel: f.label, listKey: (f.options as { listKey: string }).listKey },
+                })),
+            });
+        }
+    }
+
     return (
         <BriefingForm
             token={token}
@@ -130,6 +162,7 @@ export default async function BriefingPublicPage({ params }: { params: Promise<{
             primaryColor={cycle.tenant.primaryColor}
             referenceMonthLabel={formatMonthBR(dbDateToIso(cycle.referenceMonth))}
             dueDateLabel={cycle.dueDate ? formatDateBR(dbDateToIso(cycle.dueDate)) : null}
+            clientLists={Object.fromEntries(clientListsByKey)}
             sections={cycle.template.sections.map((s) => ({
                 id: s.id,
                 title: s.title,
@@ -145,7 +178,7 @@ export default async function BriefingPublicPage({ params }: { params: Promise<{
                     hint: f.hint,
                     placeholder: f.placeholder,
                     type: f.type,
-                    options: f.options as string[] | null,
+                    options: f.options as string[] | { listKey: string } | null,
                     isRequired: f.isRequired,
                     width: f.width,
                 })),

@@ -11,7 +11,7 @@ const bodySchema = z.object({
         z.object({
             fieldId: z.string().uuid(),
             groupIndex: z.number().int().min(0).default(0),
-            value: z.object({ raw: z.union([z.string(), z.number(), z.boolean(), z.null()]) }),
+            value: z.object({ raw: z.union([z.string(), z.number(), z.boolean(), z.null(), z.array(z.string())]) }),
         })
     ).max(200),
 });
