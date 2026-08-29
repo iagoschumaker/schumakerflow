@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useToast } from '@/components/Toast';
-import { Settings, HardDrive, CheckCircle2, XCircle, Loader2, LogOut, ExternalLink, Lock, QrCode, DollarSign } from 'lucide-react';
+import { Settings, HardDrive, CheckCircle2, XCircle, Loader2, LogOut, ExternalLink, Lock, QrCode, DollarSign, ImageIcon, Trash2, Palette } from 'lucide-react';
 
 interface TenantInfo {
     id: string;
@@ -35,6 +35,12 @@ export default function SettingsPage() {
     const [pixForm, setPixForm] = useState({ pixKey: '', pixKeyType: 'CPF', pixReceiverName: '' });
     const [pixSaving, setPixSaving] = useState(false);
     const [pixConfigured, setPixConfigured] = useState(false);
+    const [logoUrl, setLogoUrl] = useState<string | null>(null);
+    const [primaryColor, setPrimaryColor] = useState('#6366f1');
+    const [logoUploading, setLogoUploading] = useState(false);
+    const [logoRemoving, setLogoRemoving] = useState(false);
+    const [colorSaving, setColorSaving] = useState(false);
+    const logoInputRef = useRef<HTMLInputElement>(null);
 
     // Check URL params for drive connection result
     const [driveMessage, setDriveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -89,6 +95,15 @@ export default function SettingsPage() {
                 }
             })
             .catch(() => { /* PIX not configured yet, ignore */ });
+
+        // Load branding (logo + primary color)
+        fetch('/api/admin/settings/branding')
+            .then((r) => r.json())
+            .then((d) => {
+                if (d.data?.logoUrl) setLogoUrl(d.data.logoUrl);
+                if (d.data?.primaryColor) setPrimaryColor(d.data.primaryColor);
+            })
+            .catch(() => { /* ignore */ });
     }, []);
 
     const handleConnect = () => {
@@ -112,6 +127,58 @@ export default function SettingsPage() {
             showToast('Google Drive desconectado com sucesso.', 'success');
         } finally {
             setDisconnecting(false);
+        }
+    };
+
+    const handleLogoUpload = async (file: File) => {
+        setLogoUploading(true);
+        try {
+            const fd = new FormData();
+            fd.append('logo', file);
+            const res = await fetch('/api/admin/settings/branding', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (res.ok) {
+                setLogoUrl(`${data.data.logoUrl}?v=${Date.now()}`);
+                showToast('Logo atualizada com sucesso!', 'success');
+            } else {
+                showToast(data.error || 'Erro ao enviar a logo', 'error');
+            }
+        } finally {
+            setLogoUploading(false);
+            if (logoInputRef.current) logoInputRef.current.value = '';
+        }
+    };
+
+    const handleLogoRemove = async () => {
+        const ok = await showConfirm({
+            title: 'Remover logo',
+            message: 'Sua marca deixará de aparecer para os clientes nas páginas públicas (briefings, compartilhamentos). Deseja continuar?',
+            confirmText: 'Remover',
+            variant: 'warning',
+        });
+        if (!ok) return;
+        setLogoRemoving(true);
+        try {
+            await fetch('/api/admin/settings/branding', { method: 'DELETE' });
+            setLogoUrl(null);
+            showToast('Logo removida.', 'success');
+        } finally {
+            setLogoRemoving(false);
+        }
+    };
+
+    const handleColorSave = async () => {
+        setColorSaving(true);
+        try {
+            const res = await fetch('/api/admin/settings/branding', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ primaryColor }),
+            });
+            if (res.ok) showToast('Cor de marca salva!', 'success');
+            else showToast('Erro ao salvar a cor', 'error');
+        } finally {
+            setColorSaving(false);
         }
     };
 
@@ -194,6 +261,89 @@ export default function SettingsPage() {
                             <div>
                                 <div className="text-sm text-muted" style={{ marginBottom: '4px' }}>Status</div>
                                 <span className="badge badge-success">{tenant?.status}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Branding (logo + primary color) */}
+                <div className="card" style={{ marginTop: 'var(--space-4)' }}>
+                    <div className="card-header">
+                        <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                            <ImageIcon size={18} /> Identidade Visual
+                        </h2>
+                    </div>
+                    <div style={{ padding: 'var(--space-4)' }}>
+                        <p className="text-sm text-muted" style={{ marginBottom: 'var(--space-4)' }}>
+                            Sua logo e cor de marca aparecem para os clientes nas páginas públicas (briefings, links compartilhados).
+                        </p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', marginBottom: 'var(--space-5)' }}>
+                            <div style={{
+                                width: 72, height: 72, borderRadius: 'var(--radius-lg)',
+                                background: 'var(--color-border-light)', display: 'flex', alignItems: 'center',
+                                justifyContent: 'center', overflow: 'hidden', flexShrink: 0,
+                                border: '1px solid var(--color-border)',
+                            }}>
+                                {logoUrl ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={logoUrl} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                ) : (
+                                    <ImageIcon size={24} style={{ color: 'var(--color-text-muted)' }} />
+                                )}
+                            </div>
+                            <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                                <input
+                                    ref={logoInputRef}
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                                    style={{ display: 'none' }}
+                                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLogoUpload(f); }}
+                                />
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary"
+                                    disabled={logoUploading}
+                                    onClick={() => logoInputRef.current?.click()}
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}
+                                >
+                                    {logoUploading ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />}
+                                    {logoUrl ? 'Trocar logo' : 'Enviar logo'}
+                                </button>
+                                {logoUrl && (
+                                    <button
+                                        type="button"
+                                        className="btn btn-danger"
+                                        disabled={logoRemoving}
+                                        onClick={handleLogoRemove}
+                                        style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}
+                                    >
+                                        {logoRemoving ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                                        Remover
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <Palette size={14} /> Cor de marca
+                            </label>
+                            <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+                                <input
+                                    type="color"
+                                    value={primaryColor}
+                                    onChange={(e) => setPrimaryColor(e.target.value)}
+                                    style={{ width: 44, height: 38, padding: 2, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}
+                                />
+                                <input
+                                    className="form-input"
+                                    value={primaryColor}
+                                    onChange={(e) => setPrimaryColor(e.target.value)}
+                                    style={{ maxWidth: 140 }}
+                                />
+                                <button type="button" className="btn btn-primary" disabled={colorSaving} onClick={handleColorSave}>
+                                    {colorSaving ? <Loader2 size={14} className="animate-spin" /> : 'Salvar cor'}
+                                </button>
                             </div>
                         </div>
                     </div>

@@ -26,25 +26,63 @@
     color-scheme: dark;
 }
 
+/* Hero brand banner -- same photo + dark blur treatment as the system's
+   own login page (/login, .login-banner in globals.css), reusing the same
+   image so the client's first impression matches the agency's own brand
+   entry point. Unlike the login page, this one keeps a slow, continuous
+   pan (prefers-reduced-motion turns it off) since it's a much smaller,
+   glanceable strip rather than a full-height side panel. */
 .brandBar {
+    position: relative;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 12px 20px;
-    border-bottom: 1px solid var(--pub-border-light);
+    gap: 12px;
+    min-height: 84px;
+    padding: 16px 20px;
+    overflow: hidden;
+}
+
+.brandBarBg {
+    position: absolute;
+    inset: -10%;
+    background: url('/icons/banner-4k.png') center/cover no-repeat;
+    animation: brandBarPan 22s ease-in-out infinite alternate;
+}
+
+@keyframes brandBarPan {
+    from { transform: scale(1) translate(0, 0); }
+    to { transform: scale(1.12) translate(-1.5%, 1%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .brandBarBg { animation: none; }
+}
+
+.brandBarOverlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(7, 11, 20, 0.72);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
 }
 
 .brandLogo {
-    height: 28px;
+    position: relative;
+    z-index: 1;
+    height: 36px;
     width: auto;
-    border-radius: 6px;
+    border-radius: 8px;
     object-fit: contain;
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
 }
 
 .brandName {
-    font-size: 0.85rem;
+    position: relative;
+    z-index: 1;
+    font-size: 0.95rem;
     font-weight: 700;
-    color: var(--pub-text-secondary);
+    color: #fff;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
 }
 
 .header {

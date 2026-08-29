@@ -44,3 +44,6 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# user-uploaded assets (tenant branding, etc.) -- persisted on the VPS disk, not in git
+/public/uploads/

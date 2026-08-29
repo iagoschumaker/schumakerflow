@@ -197,6 +197,8 @@ export default function BriefingForm({ token, clientName, tenantName, tenantLogo
             <div className={styles.stateWrapper} style={brandStyle}>
                 {tenantName && (
                     <div className={styles.brandBar}>
+                        <div className={styles.brandBarBg} />
+                        <div className={styles.brandBarOverlay} />
                         {tenantLogoUrl && <img src={tenantLogoUrl} alt={tenantName} className={styles.brandLogo} />}
                         <span className={styles.brandName}>{tenantName}</span>
                     </div>
@@ -214,13 +216,15 @@ export default function BriefingForm({ token, clientName, tenantName, tenantLogo
 
     return (
         <div className={styles.page} style={brandStyle}>
+            {tenantName && (
+                <div className={styles.brandBar}>
+                    <div className={styles.brandBarBg} />
+                    <div className={styles.brandBarOverlay} />
+                    {tenantLogoUrl && <img src={tenantLogoUrl} alt={tenantName} className={styles.brandLogo} />}
+                    <span className={styles.brandName}>{tenantName}</span>
+                </div>
+            )}
             <div className={styles.header}>
-                {tenantName && (
-                    <div className={styles.brandBar}>
-                        {tenantLogoUrl && <img src={tenantLogoUrl} alt={tenantName} className={styles.brandLogo} />}
-                        <span className={styles.brandName}>{tenantName}</span>
-                    </div>
-                )}
                 <div className={styles.headerInner}>
                     <div className={styles.headerTop}>
                         <div>

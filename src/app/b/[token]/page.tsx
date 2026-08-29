@@ -23,6 +23,8 @@ function StatePage({
         <div className={styles.stateWrapper} style={primaryColor ? ({ '--pub-primary': primaryColor } as React.CSSProperties) : undefined}>
             {tenantName && (
                 <div className={styles.brandBar}>
+                    <div className={styles.brandBarBg} />
+                    <div className={styles.brandBarOverlay} />
                     {tenantLogoUrl && <img src={tenantLogoUrl} alt={tenantName} className={styles.brandLogo} />}
                     <span className={styles.brandName}>{tenantName}</span>
                 </div>

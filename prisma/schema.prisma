@@ -764,7 +764,12 @@ model BriefingCycle {
   answers  BriefingAnswer[]
   events   BriefingEvent[]
 
-  @@unique([tenantId, clientId, templateId, referenceMonth])
+  // Uniqueness is enforced by a PARTIAL unique index (WHERE "archivedAt" IS
+  // NULL) created by hand in migration 20260828150000_briefing_cycle_partial_unique,
+  // not by a Prisma-level @@unique -- Prisma has no syntax for a conditional
+  // unique constraint. This lets an archived cycle stay as history while a
+  // brand-new cycle is created for the same client+template+month.
+  @@index([tenantId, clientId, templateId, referenceMonth])
   @@index([tenantId, status])
   @@index([tenantId, referenceMonth])
   @@index([clientId])
